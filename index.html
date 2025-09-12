@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PorKCasare</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header class="nav"><div class="brand"><img src="images/logo.webp" alt="logo"><div><strong>PorKCasare</strong></div></div><div><a class="btn" href="login.html">Entrar</a> <a class="btn" style="background:#06c" href="register.html">Registrarse</a></div></header>
+<main class="container">
+  <section class="hero">
+    <div style="flex:1">
+      <h1>Carne empacada al vacío — PorKCasare</h1>
+      <p class="lead">Seleccionamos, empacamos y distribuimos cortes de cerdo con trazabilidad y la mejor calidad.</p>
+      <div class="card" style="margin-top:14px">
+        <h4>¿Cómo funciona el plan de referidos?</h4>
+        <ul>
+          <li>Pagar inscripción de $300.000 (gestión desde la oficina virtual).</li>
+          <li>Recibes un código único con prefijo <strong>Pork</strong>.</li>
+          <li>Puntos: 50 pts por cada $300.000 en compras; recompra $60.000 mantiene la actividad.</li>
+        </ul>
+        <div style="margin-top:10px"><a class="btn" href="register.html">Regístrate</a></div>
+      </div>
+    </div>
+    <div style="width:420px"><div class="card"><div class="carousel" id="carousel"><img src="images/costillas.jpg" alt=""></div><div class="grid"><div class="card">Fresco<div class="small">Cortes empacados al vacío</div></div><div class="card">Rápido<div class="small">Despachos 48-72h</div></div><div class="card">Confiable<div class="small">Trazabilidad completa</div></div></div></div></div>
+  </section>
+  <section style="margin-top:20px" class="card"><h3>Misión</h3><p>Proveer carne porcina de calidad, incentivando mejores prácticas en la producción y generando valor.</p></section>
+  <section style="margin-top:20px"><div class="card"><h4>Galería</h4><div class="carousel" style="height:200px"><img src="images/chuleta.jpg"></div></div></section>
+</main>
+<footer class="footer">© PorKCasare</footer>
+<script>
+const images = ['images/costillas.jpg','images/chuleta.jpg','images/imagen1.webp','images/imagen2.jpg'];
+let i=0; const el=document.getElementById('carousel'); if(el){ setInterval(()=>{ i=(i+1)%images.length; el.querySelector('img').src=images[i]; },4000); }
+</script>
+</body></html>
