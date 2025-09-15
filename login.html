@@ -1,1 +1,66 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Entrar - PorKCasare</title><link rel="stylesheet" href="style.css"></head><body><header class="nav"><div class="brand"><img src="images/logo.webp" alt="logo"><div><strong>PorKCasare</strong></div></div></header><main class="container"><div class="card"><h3>Entrar</h3><form id="loginForm"><input id="email" placeholder="Correo" type="email" required style="width:100%;padding:10px;margin-bottom:8px"><input id="password" placeholder="Contraseña" type="password" required style="width:100%;padding:10px;margin-bottom:8px"><div><button class="btn" type="submit">Entrar</button></div></form></div></main><script type="module" src="src/auth-lite.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PorkCasare - Ingreso</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f5f9ff; /* Fondo suave azul */
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    img.logo {
+      width: 120px;
+      margin-bottom: 30px;
+    }
+
+    h1 {
+      color: #003366; /* Azul corporativo */
+      margin-bottom: 40px;
+    }
+
+    .btn {
+      display: block;
+      width: 250px;
+      padding: 15px;
+      margin: 10px auto;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background-color: #0055cc; /* Azul fuerte */
+      color: white;
+      transition: 0.3s;
+      text-decoration: none;
+    }
+
+    .btn:hover {
+      background-color: #003d99; /* Azul más oscuro */
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="images/logo.webp" alt="Logo PorkCasare" class="logo">
+    <h1>Bienvenido a PorkCasare</h1>
+
+    <a href="register.html" class="btn">Registro de Cliente</a>
+    <a href="distribuidor.html" class="btn">Registro nuevo Distribuidor</a>
+    <a href="admin.html" class="btn">Acceso del Distribuidor</a>
+    <a href="#" class="btn">Descargar App</a>
+  </div>
+</body>
+</html>
