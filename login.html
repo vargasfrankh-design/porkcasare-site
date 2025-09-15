@@ -101,6 +101,7 @@
     padding: 12px;
   }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
     <div class="logo-container">
@@ -111,8 +112,18 @@
 
     <a href="register.html" class="btn">Registro de Cliente</a>
     <a href="distribuidor.html" class="btn">Registro nuevo Distribuidor</a>
-    <a href="admin.html" class="btn">Acceso del Distribuidor</a>
-    <a href="#" class="btn">Descargar App</a>
+    <a href="distribuidor.html" class="btn">Acceso del Distribuidor</a>
+    <a href="btnDescargar" class="btn">Descargar App</a>
   </div>
+<script>
+  document.getElementById("btnDescargar").addEventListener("click", function () {
+    Swal.fire({
+      title: '🚧 En desarrollo',
+      text: 'Esta sección estará disponible próximamente.',
+      icon: 'info',
+      confirmButtonText: 'Entendido'
+    });
+  });
+</script>
 </body>
 </html>
