@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PorkCasare - Ingreso</title>
-  <style>
+<style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
@@ -62,11 +62,52 @@
 
       background-color: #003d99; /* Azul más oscuro */
     }
-  </style>
+    /* --- Logo circular con fondo azul y responsivo --- */
+.logo-container {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background-color: #0055cc;    /* azul corporativo */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  border: 3px solid #fff;
+  overflow: hidden;
+}
+
+.logo-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* Responsivo para móviles */
+@media (max-width: 480px) {
+  .logo-container {
+    width: 120px;
+    height: 120px;
+  }
+
+  h1 {
+    font-size: 20px;
+  }
+
+  .btn {
+    width: 200px;
+    font-size: 14px;
+    padding: 12px;
+  }
+}
+</style>
 </head>
 <body>
-  <div class="container">
-    <img src="images/logo.webp" alt="Logo PorkCasare" class="logo">
+    <div class="logo-container">
+  <img src="images/logo.webp" alt="Logo PorkCasare">
+</div>
+
     <h1>Bienvenido a PorkCasare</h1>
 
     <a href="register.html" class="btn">Registro de Cliente</a>
