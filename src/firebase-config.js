@@ -18,8 +18,6 @@ const firebaseConfig = {
 // Exportar la config para usarla en main.js u otros archivos
 export default firebaseConfig;
 
-};
-
 // Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
