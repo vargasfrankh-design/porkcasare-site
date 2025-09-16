@@ -3,132 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Registro de Distribuidor - PorkCasare</title>
+  <title>Registro Distribuidor - PorkCasare</title>
   <link rel="stylesheet" href="styles.css">
-
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      background: #f5f8fa;
-    }
-
-    .registro-container {
-      background: white;
-      padding: 25px;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      max-width: 500px;
-      width: 100%;
-    }
-
-    h2 {
-      text-align: center;
-      color: #0d6efd;
-      margin-bottom: 20px;
-    }
-
-    label {
-      font-weight: bold;
-      display: block;
-      margin-top: 12px;
-    }
-
-    input, select {
-      width: 100%;
-      padding: 10px;
-      margin-top: 5px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
-
-    .acciones {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 20px;
-    }
-
-    button {
-      padding: 12px 20px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    .btn-registrar {
-      background: #0d6efd;
-      color: white;
-    }
-
-    .btn-reset {
-      background: #e0e0e0;
-    }
-  </style>
 </head>
 <body>
+  <div class="container">
+    <img src="logo.png" alt="PorkCasare" class="logo">
 
-  <div class="registro-container">
     <h2>Registro de Distribuidor</h2>
-    <form id="formRegistro">
 
-      <label>Tipo de Registro</label>
+    <form id="registerForm">
+      <!-- Tipo de registro -->
+      <label>Tipo de Registro:</label>
       <select id="tipoRegistro" required>
         <option value="">Seleccione...</option>
         <option value="distribuidor">Distribuidor</option>
         <option value="cliente">Cliente</option>
       </select>
 
-      <label>País</label>
-      <select id="pais" required>
-        <option value="">Seleccione...</option>
-        <option value="Colombia">Colombia</option>
-        <option value="México">México</option>
-        <option value="Argentina">Argentina</option>
-        <option value="Chile">Chile</option>
-        <option value="Perú">Perú</option>
-        <option value="Ecuador">Ecuador</option>
-        <option value="Venezuela">Venezuela</option>
-        <option value="Bolivia">Bolivia</option>
-        <option value="Paraguay">Paraguay</option>
-        <option value="Uruguay">Uruguay</option>
-        <option value="Costa Rica">Costa Rica</option>
-        <option value="Panamá">Panamá</option>
-        <option value="Guatemala">Guatemala</option>
-        <option value="Honduras">Honduras</option>
-        <option value="El Salvador">El Salvador</option>
-        <option value="Nicaragua">Nicaragua</option>
-        <option value="República Dominicana">República Dominicana</option>
-      </select>
+      <!-- País -->
+      <label>País:</label>
+      <select id="pais" required></select>
 
-      <label>Provincia</label>
-      <input type="text" id="provincia" placeholder="Provincia" required>
+      <!-- Provincia -->
+      <label>Provincia:</label>
+      <select id="provincia" required></select>
 
-      <label>Ciudad</label>
-      <input type="text" id="ciudad" placeholder="Ciudad" required>
+      <!-- Ciudad -->
+      <label>Ciudad:</label>
+      <select id="ciudad" required></select>
 
-      <label>Patrocinador</label>
+      <!-- Patrocinador -->
+      <label>Patrocinador:</label>
       <input type="text" id="patrocinador" required>
 
-      <label>Usuario</label>
+      <!-- Usuario -->
+      <label>Usuario:</label>
       <input type="text" id="usuario" required>
 
-      <label>Contraseña</label>
+      <!-- Contraseña -->
+      <label>Contraseña:</label>
       <input type="password" id="password" required>
 
-      <label>Confirmar Contraseña</label>
-      <input type="password" id="passwordConfirm" required>
+      <!-- Confirmar contraseña -->
+      <label>Confirmar Contraseña:</label>
+      <input type="password" id="confirmPassword" required>
 
-      <label>Nombre</label>
+      <!-- Nombre y Apellido -->
+      <label>Nombre:</label>
       <input type="text" id="nombre" required>
 
-      <label>Apellido</label>
+      <label>Apellido:</label>
       <input type="text" id="apellido" required>
 
-      <label>Sexo</label>
+      <!-- Sexo -->
+      <label>Sexo:</label>
       <select id="sexo" required>
         <option value="">Seleccione...</option>
         <option value="M">Masculino</option>
@@ -136,36 +65,49 @@
         <option value="O">Otro</option>
       </select>
 
-      <label>Fecha de nacimiento</label>
+      <!-- Fecha nacimiento -->
+      <label>Fecha de Nacimiento:</label>
       <input type="date" id="fechaNacimiento" required>
 
-      <label>Documento de identidad</label>
-      <input type="text" id="documento" required>
+      <!-- Documento -->
+      <label>Tipo de Documento:</label>
+      <select id="tipoDocumento" required>
+        <option value="CC">Cédula de Ciudadanía</option>
+        <option value="CE">Cédula de Extranjería</option>
+        <option value="PAS">Pasaporte</option>
+      </select>
 
-      <label>Email</label>
+      <label>Número Documento:</label>
+      <input type="text" id="numeroDocumento" required>
+
+      <!-- Email -->
+      <label>Email:</label>
       <input type="email" id="email" required>
 
-      <label>Dirección de envío</label>
+      <!-- Dirección -->
+      <label>Dirección de Envío:</label>
       <input type="text" id="direccion" required>
 
-      <label>Celular</label>
+      <!-- Celular -->
+      <label>Celular:</label>
       <input type="text" id="celular" required>
 
-      <label>Código Postal</label>
+      <!-- Código Postal -->
+      <label>Código Postal:</label>
       <input type="text" id="codigoPostal" required>
 
+      <!-- Aceptar términos -->
       <label>
-        <input type="checkbox" id="acepta" required>
-        Confirmo que he leído y acepto acuerdos y reglamentos de PorkCasare
+        <input type="checkbox" id="terminos" required>
+        Confirmo que he leído y acepto los acuerdos y reglamentos de PorkCasare.
       </label>
 
-      <div class="acciones">
-        <button type="submit" class="btn-registrar">Registrar</button>
-        <button type="reset" class="btn-reset">Restablecer</button>
-      </div>
+      <!-- Botones -->
+      <button type="submit">Registrar</button>
+      <button type="reset">Restablecer</button>
     </form>
   </div>
 
-  <script src="main.js"></script>
+  <script type="module" src="src/main.js"></script>
 </body>
 </html>
