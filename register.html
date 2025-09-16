@@ -3,111 +3,145 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Registro Distribuidor - PorkCasare</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>Registro PorkCasare</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #f5f9ff;
+    }
+    .register-container {
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 30px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
+    }
+    .logo {
+      display: block;
+      margin: 0 auto 20px;
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .form-check-label a {
+      text-decoration: none;
+      color: #0d6efd;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <img src="logo.png" alt="PorkCasare" class="logo">
 
-    <h2>Registro de Distribuidor</h2>
+  <div class="register-container">
+    <img src="logo.png" alt="PorkCasare" class="logo">
+    <h3 class="text-center text-primary mb-4">Registro de Distribuidor</h3>
 
     <form id="registerForm">
+
       <!-- Tipo de registro -->
-      <label>Tipo de Registro:</label>
-      <select id="tipoRegistro" required>
-        <option value="">Seleccione...</option>
-        <option value="distribuidor">Distribuidor</option>
-        <option value="cliente">Cliente</option>
-      </select>
+      <div class="mb-3">
+        <label class="form-label">Tipo de registro</label>
+        <select class="form-select" id="tipoRegistro" required>
+          <option value="">Seleccione...</option>
+          <option value="distribuidor">Distribuidor</option>
+          <option value="cliente">Cliente</option>
+        </select>
+      </div>
 
-      <!-- País -->
-      <label>País:</label>
-      <select id="pais" required></select>
+      <!-- País / Provincia / Ciudad -->
+      <div class="mb-3">
+        <label class="form-label">País</label>
+        <select class="form-select" id="pais" required></select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Provincia</label>
+        <select class="form-select" id="provincia" required></select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Ciudad</label>
+        <select class="form-select" id="ciudad" required></select>
+      </div>
 
-      <!-- Provincia -->
-      <label>Provincia:</label>
-      <select id="provincia" required></select>
+      <!-- Usuario / Contraseña -->
+      <div class="mb-3">
+        <label class="form-label">Usuario</label>
+        <input type="text" id="usuario" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Contraseña</label>
+        <input type="password" id="password" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Confirmar contraseña</label>
+        <input type="password" id="confirmPassword" class="form-control" required>
+      </div>
 
-      <!-- Ciudad -->
-      <label>Ciudad:</label>
-      <select id="ciudad" required></select>
-
-      <!-- Patrocinador -->
-      <label>Patrocinador:</label>
-      <input type="text" id="patrocinador" required>
-
-      <!-- Usuario -->
-      <label>Usuario:</label>
-      <input type="text" id="usuario" required>
-
-      <!-- Contraseña -->
-      <label>Contraseña:</label>
-      <input type="password" id="password" required>
-
-      <!-- Confirmar contraseña -->
-      <label>Confirmar Contraseña:</label>
-      <input type="password" id="confirmPassword" required>
-
-      <!-- Nombre y Apellido -->
-      <label>Nombre:</label>
-      <input type="text" id="nombre" required>
-
-      <label>Apellido:</label>
-      <input type="text" id="apellido" required>
-
-      <!-- Sexo -->
-      <label>Sexo:</label>
-      <select id="sexo" required>
-        <option value="">Seleccione...</option>
-        <option value="M">Masculino</option>
-        <option value="F">Femenino</option>
-        <option value="O">Otro</option>
-      </select>
-
-      <!-- Fecha nacimiento -->
-      <label>Fecha de Nacimiento:</label>
-      <input type="date" id="fechaNacimiento" required>
+      <!-- Datos personales -->
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Nombre</label>
+          <input type="text" id="nombre" class="form-control" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Apellido</label>
+          <input type="text" id="apellido" class="form-control" required>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Sexo</label>
+        <select id="sexo" class="form-select" required>
+          <option value="">Seleccione...</option>
+          <option value="M">Masculino</option>
+          <option value="F">Femenino</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Fecha de nacimiento</label>
+        <input type="date" id="fechaNacimiento" class="form-control" required>
+      </div>
 
       <!-- Documento -->
-      <label>Tipo de Documento:</label>
-      <select id="tipoDocumento" required>
-        <option value="CC">Cédula de Ciudadanía</option>
-        <option value="CE">Cédula de Extranjería</option>
-        <option value="PAS">Pasaporte</option>
-      </select>
+      <div class="mb-3">
+        <label class="form-label">Documento de identidad</label>
+        <input type="text" id="documento" class="form-control" required>
+      </div>
 
-      <label>Número Documento:</label>
-      <input type="text" id="numeroDocumento" required>
-
-      <!-- Email -->
-      <label>Email:</label>
-      <input type="email" id="email" required>
-
-      <!-- Dirección -->
-      <label>Dirección de Envío:</label>
-      <input type="text" id="direccion" required>
-
-      <!-- Celular -->
-      <label>Celular:</label>
-      <input type="text" id="celular" required>
-
-      <!-- Código Postal -->
-      <label>Código Postal:</label>
-      <input type="text" id="codigoPostal" required>
+      <!-- Contacto -->
+      <div class="mb-3">
+        <label class="form-label">Correo electrónico</label>
+        <input type="email" id="email" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Celular</label>
+        <input type="tel" id="celular" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Dirección de envío</label>
+        <input type="text" id="direccion" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Código postal</label>
+        <input type="text" id="codigoPostal" class="form-control">
+      </div>
 
       <!-- Aceptar términos -->
-      <label>
-        <input type="checkbox" id="terminos" required>
-        Confirmo que he leído y acepto los acuerdos y reglamentos de PorkCasare.
-      </label>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="aceptaTerminos" required>
+        <label class="form-check-label" for="aceptaTerminos">
+          Confirmo que he leído y acepto los <a href="#">acuerdos y reglamentos</a> de PorkCasare.
+        </label>
+      </div>
 
       <!-- Botones -->
-      <button type="submit">Registrar</button>
-      <button type="reset">Restablecer</button>
+      <div class="d-flex justify-content-between">
+        <button type="reset" class="btn btn-secondary">Restablecer</button>
+        <button type="submit" class="btn btn-primary">Registrar</button>
+      </div>
     </form>
   </div>
 
-  <script type="module" src="src/main.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="main.js"></script>
 </body>
 </html>
