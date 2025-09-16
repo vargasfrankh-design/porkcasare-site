@@ -1,12 +1,20 @@
-// src/firebase-config.js
-// Stub: no incluir claves en el repo.
-// En el build Netlify generará este archivo a partir de variables de entorno.
-export const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: "",
-  measurementId: ""
+// src/FirebaseRayaConfig.js
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAjj3AluF19BBbPfafimJoK7SJbdMrvhWY",
+  authDomain: "porkcasare-915ff.firebaseapp.com",
+  projectId: "porkcasare-915ff",
+  storageBucket: "porkcasare-915ff.firebasestorage.app",
+  messagingSenderId: "147157887309",
+  appId: "1:147157887309:web:5c6db76a20474f172def04"
 };
+
+// Inicializar Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+export { auth, db };
