@@ -1,1 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Oficina Virtual - PorKCasare</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Navegación -->
+  <nav class="nav">
+    <div class="brand">
+      <img src="images/logo.webp" alt="Logo PorKCasare" class="logo" />
+      <div><strong>PorKCasare</strong></div>
+    </div>
+  </nav>
 
+  <!-- Contenido principal -->
+  <main class="container">
+    
+    <!-- Código de referido -->
+<section class="referido-section">
+  <h2>Mi Código de Referido</h2>
+  <div class="ref-box">
+    <input type="text" id="refCode" readonly>
+    <button class="btn" id="copyRef">Copiar</button>
+  </div>
+</section>
+
+<!-- Red de referidos -->
+<section class="red-section">
+  <h2>Mi Red de Referidos</h2>
+  <ul id="redReferidos" class="red-list"></ul>
+</section>
+
+<!-- Botón modo oscuro -->
+<div style="margin-top: 20px;">
+  <button class="btn btn-darkmode" id="toggleDarkMode">🌓 Modo Oscuro</button>
+</div>
+
+    <section class="card">
+      <h1>Oficina Virtual</h1>
+
+      <!-- Datos del usuario -->
+      <div class="user-info">
+        <p><strong>Nombre:</strong> <span id="name">Cargando...</span></p>
+        <p><strong>Email:</strong> <span id="email">Cargando...</span></p>
+        <p><strong>Código:</strong> <span id="code">Cargando...</span></p>
+        <p><strong>Puntos:</strong> <span id="points">0</span></p>
+      </div>
+
+      <!-- Acción principal -->
+      <div class="actions">
+        <button id="btnRecompra" class="btn">Recompra $60.000</button>
+      </div>
+
+      <!-- Historial -->
+      <section class="history-section">
+        <h2>Historial de Movimientos</h2>
+        <div id="history" class="history-list">
+          <!-- Aquí se cargará el historial dinámicamente -->
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <!-- Scripts -->
+  <script type="module" src="src/distribuidor-lite.js"></script>
+</body>
+</html>
