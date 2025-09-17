@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const countrySelect = document.getElementById("country");
-  const provinceSelect = document.getElementById("province");
-  const citySelect = document.getElementById("city");
+  const countrySelect = document.getElementById("pais");
+  const provinceSelect = document.getElementById("provincia");
+  const citySelect = document.getElementById("ciudad");
 
   // Forzamos país = Colombia
   countrySelect.innerHTML = `<option value="Colombia" selected>Colombia</option>`;
