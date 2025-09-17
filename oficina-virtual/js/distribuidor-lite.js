@@ -51,6 +51,42 @@ document.addEventListener('DOMContentLoaded', () => {
     redList.appendChild(li);
   });
 
+  document.addEventListener('DOMContentLoaded', () => {
+  // Simulación de datos del usuario
+  const userData = {
+    name: 'Juan Pérez',
+    email: 'juan.perez@email.com',
+    code: 'ABC123',
+    points: 1200,
+    history: [
+      { action: 'Recompra realizada', date: '2025-09-15', amount: '$60.000' },
+      { action: 'Nuevo referido registrado', date: '2025-09-12' },
+      { action: 'Bono de bienvenida', date: '2025-09-10' }
+    ]
+  };
+
+  // Mostrar datos del usuario
+  document.getElementById('name').textContent = userData.name;
+  document.getElementById('email').textContent = userData.email;
+  document.getElementById('code').textContent = userData.code;
+  document.getElementById('points').textContent = userData.points;
+
+  // Mostrar historial
+  const historyContainer = document.getElementById('history');
+  userData.history.forEach(entry => {
+    const div = document.createElement('div');
+    div.classList.add('entry');
+    div.textContent = `${entry.date} - ${entry.action}${entry.amount ? ` (${entry.amount})` : ''}`;
+    historyContainer.appendChild(div);
+  });
+
+  // Evento de botón
+  const btnRecompra = document.getElementById('btnRecompra');
+  btnRecompra.addEventListener('click', () => {
+    alert('Has realizado una recompra de $60.000.');
+    // Aquí podrías enviar la acción al servidor o actualizar el historial
+  });
+
   // Copiar código
   const btnCopy = document.getElementById('copyRef');
   btnCopy.addEventListener('click', () => {
