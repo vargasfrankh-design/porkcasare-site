@@ -35,7 +35,7 @@ document.getElementById("distribuidorLogin").addEventListener("submit", async fu
       showConfirmButton: false,
       timer: 2000
     }).then(() => {
-      window.location.href = "distribuidor.html";
+      window.location.href = "oficina-virtual/index.html";
     });
 
   } catch (error) {
@@ -47,3 +47,4 @@ document.getElementById("distribuidorLogin").addEventListener("submit", async fu
     });
   }
 });
+
