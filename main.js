@@ -90,7 +90,7 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
     });
 
     alert("✅ Registro exitoso. Ahora puede iniciar sesión.");
-    window.location.href = "login.html";
+    window.location.href = "distribuidor-login.html";
 
   } catch (error) {
     console.error("Error en registro:", error.message);
