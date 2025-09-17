@@ -51,7 +51,7 @@ provinciaSelect.addEventListener("change", () => {
   });
 });
 
-// ---- Registro de Usuario ----
+// Evento de submit del formulario de registro
 document.getElementById("registerForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -60,7 +60,7 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
   const confirmPassword = document.getElementById("confirmPassword").value;
 
   if (password !== confirmPassword) {
-    alert("Las contraseñas no coinciden");
+    alert("❌ Las contraseñas no coinciden");
     return;
   }
 
@@ -71,9 +71,9 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
     // Guardar datos adicionales en Firestore
     await setDoc(doc(db, "usuarios", userCredential.user.uid), {
       tipoRegistro: document.getElementById("tipoRegistro").value,
-      pais: countrySelect.value,
-      provincia: provinceSelect.value,
-      ciudad: citySelect.value,
+      pais: document.getElementById("pais").value,
+      provincia: document.getElementById("provincia").value,
+      ciudad: document.getElementById("ciudad").value,
       patrocinador: document.getElementById("patrocinador").value,
       usuario: document.getElementById("usuario").value,
       nombre: document.getElementById("nombre").value,
@@ -90,7 +90,7 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
     });
 
     alert("✅ Registro exitoso. Ahora puede iniciar sesión.");
-    window.location.href = "distribuidor-login.html";
+    window.location.href = "distribuidor-login.html"; // Redirección automática
 
   } catch (error) {
     console.error("Error en registro:", error.message);
