@@ -1,16 +1,16 @@
-import { auth, db } from "./firebase-config.js";
+import { auth, db } from "./src/firebase-config.js";
 import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import { setDoc, doc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-// ---- Países, Provincias y Ciudades (ejemplo para Latinoamérica) ----
+// ---- Datos de ubicación ----
 const dataUbicacion = {
-  Colombia: {
-    "Cundinamarca": ["Bogotá", "Soacha", "Zipaquirá"],
-    "Antioquia": ["Medellín", "Envigado", "Bello"]
+  "Colombia": {
+    "Boyacá": ["Tunja", "Duitama", "Sogamoso"],
+    "Cundinamarca": ["Bogotá", "Soacha", "Chía"]
   },
-  México: {
-    "CDMX": ["Benito Juárez", "Coyoacán", "Iztapalapa"],
-    "Jalisco": ["Guadalajara", "Zapopan"]
+  "Ecuador": {
+    "Pichincha": ["Quito", "Cayambe"],
+    "Guayas": ["Guayaquil", "Daule"]
   }
 };
 
@@ -71,9 +71,9 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
     // Guardar datos adicionales en Firestore
     await setDoc(doc(db, "usuarios", userCredential.user.uid), {
       tipoRegistro: document.getElementById("tipoRegistro").value,
-      pais: paisSelect.value,
-      provincia: provinciaSelect.value,
-      ciudad: ciudadSelect.value,
+      pais: countrySelect.value,
+      provincia: provinceSelect.value,
+      ciudad: citySelect.value,
       patrocinador: document.getElementById("patrocinador").value,
       usuario: document.getElementById("usuario").value,
       nombre: document.getElementById("nombre").value,
