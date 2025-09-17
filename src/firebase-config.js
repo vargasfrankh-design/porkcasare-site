@@ -6,13 +6,13 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.13.0/firebas
 // Configuración de Firebase usando variables de entorno de Netlify
 
 const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.FIREBASE_APP_ID,
-  measurementId: process.env.FIREBASE_MEASUREMENT_ID
+  apiKey: "AIzaSyAjj3AluF19BBbPfafimJoK7SJbdMrvhWY",
+  authDomain: "porkcasare-915ff.firebaseapp.com",
+  projectId: "porkcasare-915ff",
+  storageBucket: "porkcasare-915ff.firebasestorage.app",
+  messagingSenderId: "147157887309",
+  appId: "1:147157887309:web:5c6db76a20474f172def04",
+  measurementId: "G-X0DJ5Y1S6X"
 };
 
 // Exportar la config para usarla en main.js u otros archivos
