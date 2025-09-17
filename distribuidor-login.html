@@ -141,43 +141,7 @@
   <!-- SweetAlert2 para notificaciones -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
-    document.getElementById("distribuidorLogin").addEventListener("submit", function(e) {
-      e.preventDefault();
-
-      const user = document.getElementById("usuario").value;
-      const pass = document.getElementById("password").value;
-
-      const USERNAME = "distribuidor";
-      const PASSWORD = "12345";
-
-      if (user === USERNAME && pass === PASSWORD) {
-        Swal.fire({
-          icon: 'success',
-          title: '¡Bienvenido!',
-          text: 'Redirigiendo al panel...',
-          showConfirmButton: false,
-          timer: 2000
-        }).then(() => {
-          window.location.href = "distribuidor.html";
-        });
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Acceso denegado',
-          text: 'Usuario o contraseña incorrectos.'
-        });
-      }
-    });
-
-    // 🔑 Función recuperar contraseña
-    document.getElementById("recuperarClave").addEventListener("click", function() {
-      Swal.fire({
-        icon: 'info',
-        title: 'En desarrollo',
-        text: 'La opción de recuperar contraseña estará disponible próximamente.',
-        confirmButtonText: 'Entendido'
-      });
-    });
+    <script type="module" src="login-distribuidor.js"></script>
   </script>
 </body>
 </html>
