@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // Simulación de datos del usuario
   const userData = {
     name: 'Juan Pérez',
     email: 'juan.perez@email.com',
@@ -23,16 +24,16 @@ document.addEventListener('DOMContentLoaded', () => {
   if (savedPoints) userData.points = parseInt(savedPoints);
   if (savedHistory) userData.history = savedHistory;
 
-  // Mostrar datos
+  // Mostrar datos del usuario
   document.getElementById('name').textContent = userData.name;
   document.getElementById('email').textContent = userData.email;
   document.getElementById('code').textContent = userData.code;
   document.getElementById('points').textContent = userData.points;
   document.getElementById('refCode').value = `${window.location.origin}/registro?ref=${userData.code}`;
 
-  // Historial
+  // Mostrar historial
   const historyContainer = document.getElementById('history');
-  const renderHistory = () => {
+  function renderHistory() {
     historyContainer.innerHTML = '';
     userData.history.forEach(entry => {
       const div = document.createElement('div');
@@ -40,10 +41,10 @@ document.addEventListener('DOMContentLoaded', () => {
       div.textContent = `${entry.date} - ${entry.action}${entry.amount ? ` (${entry.amount})` : ''}`;
       historyContainer.appendChild(div);
     });
-  };
+  }
   renderHistory();
 
-  // Red de referidos
+  // Mostrar red de referidos
   const redList = document.getElementById('redReferidos');
   userData.red.forEach(nombre => {
     const li = document.createElement('li');
@@ -51,54 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
     redList.appendChild(li);
   });
 
-  document.addEventListener('DOMContentLoaded', () => {
-  // Simulación de datos del usuario
-  const userData = {
-    name: 'Juan Pérez',
-    email: 'juan.perez@email.com',
-    code: 'ABC123',
-    points: 1200,
-    history: [
-      { action: 'Recompra realizada', date: '2025-09-15', amount: '$60.000' },
-      { action: 'Nuevo referido registrado', date: '2025-09-12' },
-      { action: 'Bono de bienvenida', date: '2025-09-10' }
-    ]
-  };
-
-  // Mostrar datos del usuario
-  document.getElementById('name').textContent = userData.name;
-  document.getElementById('email').textContent = userData.email;
-  document.getElementById('code').textContent = userData.code;
-  document.getElementById('points').textContent = userData.points;
-
-  // Mostrar historial
-  const historyContainer = document.getElementById('history');
-  userData.history.forEach(entry => {
-    const div = document.createElement('div');
-    div.classList.add('entry');
-    div.textContent = `${entry.date} - ${entry.action}${entry.amount ? ` (${entry.amount})` : ''}`;
-    historyContainer.appendChild(div);
-  });
-
-  // Evento de botón
-  const btnRecompra = document.getElementById('btnRecompra');
-  btnRecompra.addEventListener('click', () => {
-    alert('Has realizado una recompra de $60.000.');
-    // Aquí podrías enviar la acción al servidor o actualizar el historial
-  });
-
-  // Copiar código
-  const btnCopy = document.getElementById('copyRef');
-  btnCopy.addEventListener('click', () => {
-    const input = document.getElementById('refCode');
-    input.select();
-    input.setSelectionRange(0, 99999);
-    document.execCommand('copy');
-    btnCopy.textContent = '¡Copiado!';
-    setTimeout(() => (btnCopy.textContent = 'Copiar'), 2000);
-  });
-
-  // Recompra
+  // Evento de botón Recompra
   const btnRecompra = document.getElementById('btnRecompra');
   btnRecompra.addEventListener('click', () => {
     const fecha = new Date().toISOString().split('T')[0];
@@ -115,6 +69,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('points').textContent = userData.points;
     renderHistory();
     alert('¡Recompra realizada y puntos actualizados!');
+  });
+
+  // Copiar código de referido
+  const btnCopy = document.getElementById('copyRef');
+  btnCopy.addEventListener('click', () => {
+    const input = document.getElementById('refCode');
+    input.select();
+    input.setSelectionRange(0, 99999);
+    document.execCommand('copy');
+    btnCopy.textContent = '¡Copiado!';
+    setTimeout(() => (btnCopy.textContent = 'Copiar'), 2000);
   });
 
   // Modo oscuro
