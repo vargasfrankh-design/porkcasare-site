@@ -27,6 +27,42 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('points').textContent = userData.puntos || 0;
       document.getElementById('refCode').value = `${window.location.origin}/registro?ref=${userData.usuario}`;
 
+      import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
+
+const storage = getStorage();
+
+// Mostrar foto si existe
+if (userData.fotoURL) {
+  document.getElementById('profileImg').src = userData.fotoURL;
+}
+
+// Evento: subir nueva foto
+document.getElementById('uploadPhoto').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // Solo JPG/PNG
+  if (!file.type.startsWith('image/')) {
+    alert('❌ Solo se permiten imágenes');
+    return;
+  }
+
+  const storageRef = ref(storage, `perfil/${user.uid}.jpg`);
+  await uploadBytes(storageRef, file);
+
+  const downloadURL = await getDownloadURL(storageRef);
+
+  // Actualizar en Firestore
+  await updateDoc(doc(db, "usuarios", user.uid), {
+    fotoURL: downloadURL
+  });
+
+  // Mostrar nueva imagen
+  document.getElementById('profileImg').src = downloadURL;
+  alert('✅ Foto de perfil actualizada.');
+});
+
       // Simulación de historial y red si aún no existen
       userData.history = userData.history || [
         { action: 'Bono de bienvenida', date: '2025-09-10' }
