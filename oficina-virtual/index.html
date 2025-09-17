@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Oficina Virtual - PorKCasare</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
   <!-- Navegación -->
@@ -17,27 +17,6 @@
 
   <!-- Contenido principal -->
   <main class="container">
-    
-    <!-- Código de referido -->
-<section class="referido-section">
-  <h2>Mi Código de Referido</h2>
-  <div class="ref-box">
-    <input type="text" id="refCode" readonly>
-    <button class="btn" id="copyRef">Copiar</button>
-  </div>
-</section>
-
-<!-- Red de referidos -->
-<section class="red-section">
-  <h2>Mi Red de Referidos</h2>
-  <ul id="redReferidos" class="red-list"></ul>
-</section>
-
-<!-- Botón modo oscuro -->
-<div style="margin-top: 20px;">
-  <button class="btn btn-darkmode" id="toggleDarkMode">🌓 Modo Oscuro</button>
-</div>
-
     <section class="card">
       <h1>Oficina Virtual</h1>
 
@@ -49,23 +28,39 @@
         <p><strong>Puntos:</strong> <span id="points">0</span></p>
       </div>
 
-      <!-- Acción principal -->
+      <!-- Botón Recompra -->
       <div class="actions">
         <button id="btnRecompra" class="btn">Recompra $60.000</button>
       </div>
 
+      <!-- Código de referido -->
+      <section class="referido-section">
+        <h2>Mi Código de Referido</h2>
+        <div class="ref-box">
+          <input type="text" id="refCode" readonly>
+          <button class="btn" id="copyRef">Copiar</button>
+        </div>
+      </section>
+
+      <!-- Red de referidos -->
+      <section class="red-section">
+        <h2>Mi Red de Referidos</h2>
+        <ul id="redReferidos" class="red-list"></ul>
+      </section>
+
       <!-- Historial -->
       <section class="history-section">
         <h2>Historial de Movimientos</h2>
-        <div id="history" class="history-list">
-          <!-- Aquí se cargará el historial dinámicamente -->
-        </div>
+        <div id="history" class="history-list"></div>
       </section>
+
+      <!-- Modo oscuro -->
+      <div style="margin-top: 20px;">
+        <button class="btn btn-darkmode" id="toggleDarkMode">🌓 Modo Oscuro</button>
+      </div>
     </section>
   </main>
 
-  <!-- Scripts -->
-  <script type="module" src="oficina-virtual/js
-/distribuidor-lite.js"></script>
+  <script type="module" src="js/distribuidor-lite.js"></script>
 </body>
 </html>
