@@ -3,69 +3,68 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Oficina Virtual - PorKCasare</title>
+  <title>Oficina Virtual - PorkCasare</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-  <!-- Navegación -->
+  <!-- Barra de navegación -->
   <nav class="nav">
     <div class="brand">
-      <img src="images/imagen1.webp" alt="Logo PorKCasare" class="logo" />
-      <div><strong>PorKCasare</strong></div>
+      <img src="images/logo.png" alt="PorkCasare" class="logo" />
+      <h2>PorkCasare</h2>
     </div>
+    <button id="toggleDarkMode" class="btn small">🌙</button>
   </nav>
 
   <!-- Contenido principal -->
-  <main class="container">
-    <section class="card">
-      <h1>Oficina Virtual</h1>
-
-      <!-- Foto de perfil -->
+  <div class="container">
+    <div class="card">
       <div class="foto-perfil">
-        <img id="profileImg" src="images/default-avatar.png" alt="Foto de perfil">
-        <input type="file" id="uploadPhoto" accept="image/*">
-      </div>
-
-      <!-- Datos del usuario -->
-      <div class="user-info">
-        <p><strong>Nombre:</strong> <span id="name">Cargando...</span></p>
-        <p><strong>Email:</strong> <span id="email">Cargando...</span></p>
-        <p><strong>Código:</strong> <span id="code">Cargando...</span></p>
-        <p><strong>Puntos:</strong> <span id="points">0</span></p>
-      </div>
-
-      <!-- Botón Recompra -->
-      <div class="actions">
-        <button id="btnRecompra" class="btn">Recompra $60.000</button>
-      </div>
-
-      <!-- Código de referido -->
-      <section class="referido-section">
-        <h2>Mi Código de Referido</h2>
-        <div class="ref-box">
-          <input type="text" id="refCode" readonly>
-          <button class="btn" id="copyRef">Copiar</button>
+        <img id="profileImg" src="images/avatars/avatar1.png" alt="Avatar">
+        <div class="avatar-options">
+          <p>Selecciona tu avatar:</p>
+          <div class="avatar-grid">
+            <img src="images/avatars/avatar1.png" data-avatar="avatar1.png" />
+            <img src="images/avatars/avatar2.png" data-avatar="avatar2.png" />
+            <img src="images/avatars/avatar3.png" data-avatar="avatar3.png" />
+            <img src="images/avatars/avatar4.png" data-avatar="avatar4.png" />
+            <img src="images/avatars/avatar5.png" data-avatar="avatar5.png" />
+            <img src="images/avatars/avatar6.png" data-avatar="avatar6.png" />
+            <img src="images/avatars/avatar7.png" data-avatar="avatar7.png" />
+            <img src="images/avatars/avatar8.png" data-avatar="avatar8.png" />
+            <img src="images/avatars/avatar9.png" data-avatar="avatar9.png" />
+          </div>
         </div>
-      </section>
+      </div>
 
-      <!-- Red de referidos -->
-      <section class="red-section">
-        <h2>Mi Red de Referidos</h2>
-        <ul id="redReferidos" class="red-list"></ul>
-      </section>
+      <h1>Bienvenido a tu oficina virtual</h1>
+      <div class="user-info">
+        <p><strong>Nombre:</strong> <span id="name"></span></p>
+        <p><strong>Email:</strong> <span id="email"></span></p>
+        <p><strong>Código:</strong> <span id="code"></span></p>
+        <p><strong>Puntos:</strong> <span id="points"></span></p>
+        <p><strong>Link referido:</strong></p>
+        <div class="ref-container">
+          <input type="text" id="refCode" readonly />
+          <button id="copyRef" class="btn small">Copiar</button>
+        </div>
+      </div>
+
+      <button id="btnRecompra" class="btn">Realizar recompra</button>
 
       <!-- Historial -->
-      <section class="history-section">
-        <h2>Historial de Movimientos</h2>
+      <div class="history-section">
+        <h2>Historial</h2>
         <div id="history" class="history-list"></div>
-      </section>
-
-      <!-- Modo oscuro -->
-      <div style="margin-top: 20px; text-align:center;">
-        <button class="btn btn-darkmode" id="toggleDarkMode">🌓 Modo Oscuro</button>
       </div>
-    </section>
-  </main>
+
+      <!-- Red -->
+      <div class="history-section">
+        <h2>Mi Red</h2>
+        <ul id="redReferidos"></ul>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="js/distribuidor-lite.js"></script>
 </body>
