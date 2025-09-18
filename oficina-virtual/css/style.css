@@ -1,6 +1,4 @@
-/* ================================
-   RESET Y BASE
-================================ */
+/* Reset */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -13,20 +11,16 @@ body {
   color: #333;
   line-height: 1.6;
   padding: 20px;
-  transition: background 0.3s ease, color 0.3s ease;
 }
 
-/* ================================
-   NAVBAR
-================================ */
+/* Barra superior */
 .nav {
-  background-color: #20232a;
+  background-color: #4a90e2; /* Azul tenue */
   color: #fff;
-  padding: 12px 20px;
+  padding: 10px 20px;
   display: flex;
   align-items: center;
-  border-radius: 8px;
-  margin-bottom: 20px;
+  justify-content: space-between;
 }
 
 .brand {
@@ -35,132 +29,63 @@ body {
 }
 
 .brand img.logo {
-  height: 45px;
-  margin-right: 12px;
-  border-radius: 6px;
+  height: 40px;
+  width: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
 }
 
-.brand div {
-  font-weight: bold;
-  font-size: 18px;
-}
-
-/* ================================
-   CONTENEDOR PRINCIPAL
-================================ */
 .container {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 15px;
+  max-width: 800px;
+  margin: 30px auto;
+  padding: 20px;
 }
 
 .card {
   background-color: #fff;
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 30px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-  transition: transform 0.2s ease;
-}
-
-.card:hover {
-  transform: translateY(-2px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .card h1 {
   margin-bottom: 20px;
-  font-size: 26px;
+  font-size: 24px;
   color: #222;
-  text-align: center;
 }
 
-/* ================================
-   INFO USUARIO
-================================ */
 .user-info p {
   margin-bottom: 10px;
-  font-size: 15px;
 }
 
-.user-info strong {
-  color: #007bff;
-}
-
-/* ================================
-   BOTONES
-================================ */
 .btn {
-  background: linear-gradient(135deg, #007bff, #0056b3);
+  background-color: #007bff;
   color: #fff;
-  padding: 10px 18px;
+  padding: 10px 16px;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease;
+}
+
+.btn.small {
+  padding: 6px 10px;
+  font-size: 14px;
 }
 
 .btn:hover {
-  background: linear-gradient(135deg, #0056b3, #004094);
+  background-color: #0056b3;
 }
 
-.btn-darkmode {
-  margin-top: 15px;
-  background: linear-gradient(135deg, #444, #111);
-}
-
-.btn-darkmode:hover {
-  background: linear-gradient(135deg, #111, #000);
-}
-
-/* ================================
-   SECCIONES
-================================ */
-.referido-section,
-.red-section,
 .history-section {
   margin-top: 30px;
 }
 
-.referido-section h2,
-.red-section h2,
 .history-section h2 {
   font-size: 20px;
   margin-bottom: 10px;
-  color: #20232a;
 }
 
-.ref-box {
-  display: flex;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.ref-box input {
-  flex: 1;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-}
-
-/* Lista de referidos */
-.red-list {
-  list-style: none;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 12px;
-  background: #fafafa;
-}
-
-.red-list li {
-  padding: 6px 0;
-  border-bottom: 1px solid #e3e3e3;
-}
-
-.red-list li:last-child {
-  border-bottom: none;
-}
-
-/* Historial */
 .history-list {
   border: 1px solid #ddd;
   border-radius: 6px;
@@ -179,48 +104,42 @@ body {
   border-bottom: none;
 }
 
-/* ================================
-   FOTO PERFIL
-================================ */
+/* Avatar */
 .foto-perfil {
   text-align: center;
   margin-bottom: 20px;
 }
 
 .foto-perfil img {
-  width: 110px;
-  height: 110px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   object-fit: cover;
   margin-bottom: 10px;
-  border: 4px solid #007bff;
-  box-shadow: 0 0 8px rgba(0, 123, 255, 0.5);
+  border: 3px solid #007bff;
 }
 
-.foto-perfil input[type="file"] {
-  display: block;
-  margin: 0 auto;
-  padding: 6px;
-  font-size: 13px;
+.avatar-options {
+  margin-top: 10px;
 }
 
-/* ================================
-   MODO OSCURO
-================================ */
-body.dark {
-  background-color: #181a1b;
-  color: #f4f4f4;
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
 }
 
-body.dark .card {
-  background-color: #20232a;
-  color: #fff;
+.avatar-grid img {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.2s, border 0.2s;
 }
 
-body.dark .ref-box input,
-body.dark .red-list,
-body.dark .history-list {
-  background-color: #2c2f35;
-  border-color: #444;
-  color: #f4f4f4;
+.avatar-grid img:hover {
+  transform: scale(1.1);
+  border: 2px solid #007bff;
 }
