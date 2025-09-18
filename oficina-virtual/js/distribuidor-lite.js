@@ -1,96 +1,121 @@
-// ===============================
-// MANEJO DE DATOS DE USUARIO
-// ===============================
+import { auth, db } from "/src/firebase-config.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-// Datos iniciales (ejemplo)
-const userData = {
-  name: "Frankh Yhorcy",
-  email: "frankh_yhorcy@outlook.com",
-  code: "PKC-001",
-  points: 120,
-  referido: "PKC-001-FY",
-  red: ["Camila", "Ángel", "Shirley", "Brigitte"],
-  history: [
-    { date: "2025-09-01", action: "Recompra realizada", amount: 60000 },
-    { date: "2025-08-28", action: "Nuevo referido: Camila", amount: 0 },
-    { date: "2025-08-20", action: "Ganaste puntos", amount: 50 }
-  ]
-};
+document.addEventListener('DOMContentLoaded', () => {
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      window.location.href = "/distribuidor-login.html";
+      return;
+    }
 
-// Mostrar datos en la interfaz
-document.getElementById("name").textContent = userData.name;
-document.getElementById("email").textContent = userData.email;
-document.getElementById("code").textContent = userData.code;
-document.getElementById("points").textContent = userData.points;
-document.getElementById("refCode").value = userData.referido;
+    try {
+      const docRef = doc(db, "usuarios", user.uid);
+      const docSnap = await getDoc(docRef);
 
-// ===============================
-// FOTO DE PERFIL
-// ===============================
-const uploadPhoto = document.getElementById("uploadPhoto");
-const profileImg = document.getElementById("profileImg");
+      if (!docSnap.exists()) {
+        alert("No se encontraron datos del usuario.");
+        return;
+      }
 
-uploadPhoto.addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = function (ev) {
-      profileImg.src = ev.target.result;
-      localStorage.setItem("profilePhoto", ev.target.result);
-    };
-    reader.readAsDataURL(file);
-  }
-});
+      const userData = docSnap.data();
 
-// Cargar foto guardada
-const savedPhoto = localStorage.getItem("profilePhoto");
-if (savedPhoto) {
-  profileImg.src = savedPhoto;
-}
+      // Mostrar datos
+      document.getElementById('name').textContent = `${userData.nombre} ${userData.apellido}`;
+      document.getElementById('email').textContent = userData.email;
+      document.getElementById('code').textContent = userData.usuario;
+      document.getElementById('points').textContent = userData.puntos || 0;
+      document.getElementById('refCode').value = `${window.location.origin}/registro?ref=${userData.usuario}`;
 
-// ===============================
-// COPIAR CÓDIGO REFERIDO
-// ===============================
-document.getElementById("copyRef").addEventListener("click", () => {
-  const refInput = document.getElementById("refCode");
-  refInput.select();
-  refInput.setSelectionRange(0, 99999);
-  navigator.clipboard.writeText(refInput.value);
-  alert("¡Código copiado!");
-});
+      // Avatar
+      const profileImg = document.getElementById('profileImg');
+      profileImg.src = userData.fotoURL || "images/avatars/avatar1.png";
 
-// ===============================
-// RED DE REFERIDOS
-// ===============================
-const redList = document.getElementById("redReferidos");
-userData.red.forEach(ref => {
-  const li = document.createElement("li");
-  li.textContent = ref;
-  redList.appendChild(li);
-});
+      document.querySelectorAll('.avatar-grid img').forEach(img => {
+        img.addEventListener('click', async () => {
+          const selectedAvatar = `images/avatars/${img.dataset.avatar}`;
+          profileImg.src = selectedAvatar;
 
-// ===============================
-// HISTORIAL DE MOVIMIENTOS
-// ===============================
-const historyDiv = document.getElementById("history");
-userData.history.forEach(entry => {
-  const div = document.createElement("div");
-  div.classList.add("entry");
-  div.textContent = `${entry.date} - ${entry.action} ${entry.amount > 0 ? "($" + entry.amount + ")" : ""}`;
-  historyDiv.appendChild(div);
-});
+          await updateDoc(docRef, {
+            fotoURL: selectedAvatar
+          });
 
-// ===============================
-// BOTÓN DE RECOMPRA
-// ===============================
-document.getElementById("btnRecompra").addEventListener("click", () => {
-  alert("Has realizado una recompra de $60.000. ¡Felicidades!");
-});
+          alert("✅ Avatar actualizado.");
+        });
+      });
 
-// ===============================
-// MODO OSCURO
-// ===============================
-document.getElementById("toggleDarkMode").addEventListener("click", () => {
-  document.body.classList.toggle("dark");
+      // Historial
+      const historyContainer = document.getElementById('history');
+      function renderHistory() {
+        historyContainer.innerHTML = '';
+        (userData.history || []).forEach(entry => {
+          const div = document.createElement('div');
+          div.classList.add('entry');
+          div.textContent = `${entry.date} - ${entry.action}${entry.amount ? ` (${entry.amount})` : ''}`;
+          historyContainer.appendChild(div);
+        });
+      }
+      renderHistory();
+
+      // Red
+      const redList = document.getElementById('redReferidos');
+      redList.innerHTML = '';
+      (userData.red || []).forEach(nombre => {
+        const li = document.createElement('li');
+        li.textContent = nombre;
+        redList.appendChild(li);
+      });
+
+      // Recompra
+      document.getElementById('btnRecompra').addEventListener('click', async () => {
+        const fecha = new Date().toISOString().split('T')[0];
+        const newPoints = (userData.puntos || 0) + 100;
+
+        const newEntry = {
+          action: 'Recompra realizada',
+          date: fecha,
+          amount: '$60.000'
+        };
+
+        userData.puntos = newPoints;
+        userData.history = [newEntry, ...(userData.history || [])];
+
+        await updateDoc(docRef, {
+          puntos: newPoints,
+          history: userData.history
+        });
+
+        document.getElementById('points').textContent = newPoints;
+        renderHistory();
+        alert('✅ Recompra realizada y puntos actualizados.');
+      });
+
+      // Copiar referido
+      const btnCopy = document.getElementById('copyRef');
+      btnCopy.addEventListener('click', () => {
+        const input = document.getElementById('refCode');
+        input.select();
+        input.setSelectionRange(0, 99999);
+        document.execCommand('copy');
+        btnCopy.textContent = '¡Copiado!';
+        setTimeout(() => (btnCopy.textContent = 'Copiar'), 2000);
+      });
+
+      // Dark mode
+      const toggleDarkMode = document.getElementById('toggleDarkMode');
+      toggleDarkMode.addEventListener('click', () => {
+        document.body.classList.toggle('dark');
+        localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+      });
+
+      if (localStorage.getItem('theme') === 'dark') {
+        document.body.classList.add('dark');
+      }
+
+    } catch (error) {
+      console.error("🔥 Error al obtener datos del usuario:", error);
+      alert("Error al cargar los datos. Intente más tarde.");
+    }
+  });
 });
 
