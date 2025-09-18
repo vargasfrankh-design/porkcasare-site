@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Seleccionar avatar
       document.querySelectorAll('.avatar-grid img').forEach(img => {
         img.addEventListener('click', () => {
-          const selectedAvatar = `images/avatars/${img.dataset.avatar}`;
+          const selectedAvatar = `../images/avatars/${img.dataset.avatar}`;
           profileImg.src = selectedAvatar;
           localStorage.setItem('selectedAvatar', selectedAvatar);
 
