@@ -1,5 +1,6 @@
+// ✅ Importaciones al inicio
 import { auth, db } from "/src/firebase-config.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -20,14 +21,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const userData = docSnap.data();
 
-      // Mostrar datos
+      // --- Datos básicos ---
       document.getElementById('name').textContent = `${userData.nombre} ${userData.apellido}`;
       document.getElementById('email').textContent = userData.email;
       document.getElementById('code').textContent = userData.usuario;
       document.getElementById('points').textContent = userData.puntos || 0;
       document.getElementById('refCode').value = `${window.location.origin}/registro?ref=${userData.usuario}`;
 
-      // Avatar
+      // --- Cerrar sesión ---
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+          try {
+            await signOut(auth);
+            localStorage.removeItem('theme'); // opcional
+            window.location.href = "../index.html";
+          } catch (error) {
+            console.error("❌ Error al cerrar sesión:", error);
+            alert("Error al cerrar sesión. Intenta de nuevo.");
+          }
+        });
+      }
+
+      // --- Avatar ---
       const profileImg = document.getElementById('profileImg');
       profileImg.src = userData.fotoURL || "images/avatars/avatar1.png";
 
@@ -36,15 +52,12 @@ document.addEventListener('DOMContentLoaded', () => {
           const selectedAvatar = `images/avatars/${img.dataset.avatar}`;
           profileImg.src = selectedAvatar;
 
-          await updateDoc(docRef, {
-            fotoURL: selectedAvatar
-          });
-
+          await updateDoc(docRef, { fotoURL: selectedAvatar });
           alert("✅ Avatar actualizado.");
         });
       });
 
-      // Historial
+      // --- Historial ---
       const historyContainer = document.getElementById('history');
       function renderHistory() {
         historyContainer.innerHTML = '';
@@ -57,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       renderHistory();
 
-      // Red
+      // --- Red ---
       const redList = document.getElementById('redReferidos');
       redList.innerHTML = '';
       (userData.red || []).forEach(nombre => {
@@ -66,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
         redList.appendChild(li);
       });
 
-      // Recompra
+      // --- Recompra ---
       document.getElementById('btnRecompra').addEventListener('click', async () => {
         const fecha = new Date().toISOString().split('T')[0];
         const newPoints = (userData.puntos || 0) + 100;
@@ -90,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('✅ Recompra realizada y puntos actualizados.');
       });
 
-      // Copiar referido
+      // --- Copiar código de referido ---
       const btnCopy = document.getElementById('copyRef');
       btnCopy.addEventListener('click', () => {
         const input = document.getElementById('refCode');
@@ -101,15 +114,19 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => (btnCopy.textContent = 'Copiar'), 2000);
       });
 
-      // Dark mode
+      // --- Modo oscuro ---
       const toggleDarkMode = document.getElementById('toggleDarkMode');
-      toggleDarkMode.addEventListener('click', () => {
-        document.body.classList.toggle('dark');
-        localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
-      });
+      if (toggleDarkMode) {
+        toggleDarkMode.addEventListener('click', () => {
+          document.body.classList.toggle('dark');
+          localStorage.setItem('theme',
+            document.body.classList.contains('dark') ? 'dark' : 'light'
+          );
+        });
 
-      if (localStorage.getItem('theme') === 'dark') {
-        document.body.classList.add('dark');
+        if (localStorage.getItem('theme') === 'dark') {
+          document.body.classList.add('dark');
+        }
       }
 
     } catch (error) {
@@ -118,4 +135,3 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
-
