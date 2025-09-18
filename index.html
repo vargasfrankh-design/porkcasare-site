@@ -38,6 +38,9 @@
       <div class="card">
         <div class="carousel" id="carousel">
           <img src="images/costillas.jpg" alt="Costillas" />
+          <img src="images/chuleta.jpg" alt="Chuleta" />
+          <img src="images/imagen1.webp" alt="Imagen 1" />
+          <img src="images/imagen2.jpg" alt="Imagen 2" />
         </div>
         <div class="grid">
           <div class="card">Fresco
@@ -80,15 +83,51 @@
 <footer class="footer">© PorKCasare by F&amp;F Asociados</footer>
 
 <script>
-  const images = ['images/costillas.jpg','images/chuleta.jpg','images/imagen1.webp','images/imagen2.jpg'];
-  let i = 0;
-  const el = document.getElementById('carousel');
-  if(el){
-    setInterval(() => {
-      i = (i + 1) % images.length;
-      el.querySelector('img').src = images[i];
-    }, 4000);
+  const carousel = document.getElementById('carousel');
+  const imgs = carousel.querySelectorAll('img');
+  let current = 0;
+  const total = imgs.length;
+
+  // Inicial: solo la primera imagen visible
+  imgs.forEach((img, i) => {
+    img.style.opacity = i === 0 ? '1' : '0';
+    img.style.position = 'absolute';
+    img.style.top = '0';
+    img.style.left = '0';
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'contain';
+    img.style.transition = 'opacity 1s ease, transform 1s ease';
+    img.style.transform = 'translateX(0)';
+    img.style.borderRadius = '10px';
+    img.style.zIndex = i === 0 ? '2' : '1';
+  });
+
+  function nextImage() {
+    const prev = current;
+    current = (current + 1) % total;
+
+    // Animar la imagen anterior hacia la izquierda y desvanecer
+    imgs[prev].style.opacity = '0';
+    imgs[prev].style.transform = 'translateX(-100%)';
+    imgs[prev].style.zIndex = '1';
+
+    // Preparar la siguiente imagen (entra desde la derecha)
+    imgs[current].style.opacity = '1';
+    imgs[current].style.transform = 'translateX(0)';
+    imgs[current].style.zIndex = '2';
+
+    // Reset posición anterior tras animación para el próximo ciclo
+    setTimeout(() => {
+      imgs[prev].style.transition = 'none';
+      imgs[prev].style.transform = 'translateX(100%)';
+      // Forzar reflow para resetear transición
+      imgs[prev].offsetHeight; 
+      imgs[prev].style.transition = 'opacity 1s ease, transform 1s ease';
+    }, 1000);
   }
+
+  setInterval(nextImage, 4000);
 </script>
 
 <!-- Firebase SDKs -->
@@ -101,4 +140,3 @@
 <script type="module" src="./main.js"></script>
 </body>
 </html>
-
