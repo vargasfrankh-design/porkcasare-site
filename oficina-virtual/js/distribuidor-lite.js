@@ -1,147 +1,96 @@
-import { auth, db } from "/src/firebase-config.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+// ===============================
+// MANEJO DE DATOS DE USUARIO
+// ===============================
 
-document.addEventListener('DOMContentLoaded', () => {
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      window.location.href = "/distribuidor-login.html";
-      return;
-    }
+// Datos iniciales (ejemplo)
+const userData = {
+  name: "Frankh Yhorcy",
+  email: "frankh_yhorcy@outlook.com",
+  code: "PKC-001",
+  points: 120,
+  referido: "PKC-001-FY",
+  red: ["Camila", "Ángel", "Shirley", "Brigitte"],
+  history: [
+    { date: "2025-09-01", action: "Recompra realizada", amount: 60000 },
+    { date: "2025-08-28", action: "Nuevo referido: Camila", amount: 0 },
+    { date: "2025-08-20", action: "Ganaste puntos", amount: 50 }
+  ]
+};
 
-    try {
-      const docRef = doc(db, "usuarios", user.uid);
-      const docSnap = await getDoc(docRef);
+// Mostrar datos en la interfaz
+document.getElementById("name").textContent = userData.name;
+document.getElementById("email").textContent = userData.email;
+document.getElementById("code").textContent = userData.code;
+document.getElementById("points").textContent = userData.points;
+document.getElementById("refCode").value = userData.referido;
 
-      if (!docSnap.exists()) {
-        alert("No se encontraron datos del usuario.");
-        return;
-      }
+// ===============================
+// FOTO DE PERFIL
+// ===============================
+const uploadPhoto = document.getElementById("uploadPhoto");
+const profileImg = document.getElementById("profileImg");
 
-      const userData = docSnap.data();
-
-      // Mostrar datos del usuario
-      document.getElementById('name').textContent = `${userData.nombre} ${userData.apellido}`;
-      document.getElementById('email').textContent = userData.email;
-      document.getElementById('code').textContent = userData.usuario;
-      document.getElementById('points').textContent = userData.puntos || 0;
-      document.getElementById('refCode').value = `${window.location.origin}/registro?ref=${userData.usuario}`;
-
-      import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
-import { getStorage } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
-
-const storage = getStorage();
-
-// Mostrar foto si existe
-if (userData.fotoURL) {
-  document.getElementById('profileImg').src = userData.fotoURL;
-}
-
-// Evento: subir nueva foto
-document.getElementById('uploadPhoto').addEventListener('change', async (e) => {
+uploadPhoto.addEventListener("change", (e) => {
   const file = e.target.files[0];
-  if (!file) return;
-
-  // Solo JPG/PNG
-  if (!file.type.startsWith('image/')) {
-    alert('❌ Solo se permiten imágenes');
-    return;
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function (ev) {
+      profileImg.src = ev.target.result;
+      localStorage.setItem("profilePhoto", ev.target.result);
+    };
+    reader.readAsDataURL(file);
   }
-
-  const storageRef = ref(storage, `perfil/${user.uid}.jpg`);
-  await uploadBytes(storageRef, file);
-
-  const downloadURL = await getDownloadURL(storageRef);
-
-  // Actualizar en Firestore
-  await updateDoc(doc(db, "usuarios", user.uid), {
-    fotoURL: downloadURL
-  });
-
-  // Mostrar nueva imagen
-  document.getElementById('profileImg').src = downloadURL;
-  alert('✅ Foto de perfil actualizada.');
 });
 
-      // Simulación de historial y red si aún no existen
-      userData.history = userData.history || [
-        { action: 'Bono de bienvenida', date: '2025-09-10' }
-      ];
-      userData.red = userData.red || [];
+// Cargar foto guardada
+const savedPhoto = localStorage.getItem("profilePhoto");
+if (savedPhoto) {
+  profileImg.src = savedPhoto;
+}
 
-      // Mostrar historial
-      const historyContainer = document.getElementById('history');
-      function renderHistory() {
-        historyContainer.innerHTML = '';
-        userData.history.forEach(entry => {
-          const div = document.createElement('div');
-          div.classList.add('entry');
-          div.textContent = `${entry.date} - ${entry.action}${entry.amount ? ` (${entry.amount})` : ''}`;
-          historyContainer.appendChild(div);
-        });
-      }
-      renderHistory();
+// ===============================
+// COPIAR CÓDIGO REFERIDO
+// ===============================
+document.getElementById("copyRef").addEventListener("click", () => {
+  const refInput = document.getElementById("refCode");
+  refInput.select();
+  refInput.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(refInput.value);
+  alert("¡Código copiado!");
+});
 
-      // Mostrar red de referidos
-      const redList = document.getElementById('redReferidos');
-      redList.innerHTML = '';
-      userData.red.forEach(nombre => {
-        const li = document.createElement('li');
-        li.textContent = nombre;
-        redList.appendChild(li);
-      });
+// ===============================
+// RED DE REFERIDOS
+// ===============================
+const redList = document.getElementById("redReferidos");
+userData.red.forEach(ref => {
+  const li = document.createElement("li");
+  li.textContent = ref;
+  redList.appendChild(li);
+});
 
-      // Evento: Recompra
-      const btnRecompra = document.getElementById('btnRecompra');
-      btnRecompra.addEventListener('click', async () => {
-        const fecha = new Date().toISOString().split('T')[0];
-        const newPoints = (userData.puntos || 0) + 100;
+// ===============================
+// HISTORIAL DE MOVIMIENTOS
+// ===============================
+const historyDiv = document.getElementById("history");
+userData.history.forEach(entry => {
+  const div = document.createElement("div");
+  div.classList.add("entry");
+  div.textContent = `${entry.date} - ${entry.action} ${entry.amount > 0 ? "($" + entry.amount + ")" : ""}`;
+  historyDiv.appendChild(div);
+});
 
-        const newEntry = {
-          action: 'Recompra realizada',
-          date: fecha,
-          amount: '$60.000'
-        };
+// ===============================
+// BOTÓN DE RECOMPRA
+// ===============================
+document.getElementById("btnRecompra").addEventListener("click", () => {
+  alert("Has realizado una recompra de $60.000. ¡Felicidades!");
+});
 
-        userData.puntos = newPoints;
-        userData.history.unshift(newEntry);
-
-        await updateDoc(docRef, {
-          puntos: newPoints,
-          history: userData.history
-        });
-
-        document.getElementById('points').textContent = newPoints;
-        renderHistory();
-        alert('✅ Recompra realizada y puntos actualizados.');
-      });
-
-      // Copiar código referido
-      const btnCopy = document.getElementById('copyRef');
-      btnCopy.addEventListener('click', () => {
-        const input = document.getElementById('refCode');
-        input.select();
-        input.setSelectionRange(0, 99999);
-        document.execCommand('copy');
-        btnCopy.textContent = '¡Copiado!';
-        setTimeout(() => (btnCopy.textContent = 'Copiar'), 2000);
-      });
-
-      // Modo oscuro
-      const toggleDarkMode = document.getElementById('toggleDarkMode');
-      toggleDarkMode.addEventListener('click', () => {
-        document.body.classList.toggle('dark');
-        localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
-      });
-
-      if (localStorage.getItem('theme') === 'dark') {
-        document.body.classList.add('dark');
-      }
-
-    } catch (error) {
-      console.error("🔥 Error al obtener datos del usuario:", error);
-      alert("Error al cargar los datos. Intente más tarde.");
-    }
-  });
+// ===============================
+// MODO OSCURO
+// ===============================
+document.getElementById("toggleDarkMode").addEventListener("click", () => {
+  document.body.classList.toggle("dark");
 });
 
