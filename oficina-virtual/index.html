@@ -15,42 +15,40 @@
     </div>
     
     <div class="nav-actions">
-    <button id="toggleDarkMode" class="btn small">🌙</button>
-    <button id="logoutBtn" class="btn btn-logout">🚪 Cerrar sesión</button>
-  </div>
-</nav>
+      <button id="toggleDarkMode" class="btn small">🌙</button>
+      <button id="logoutBtn" class="btn btn-logout">🚪 Cerrar sesión</button>
+    </div>
+  </nav>
 
   <!-- Contenido principal -->
-<div class="container">
-  <div class="card">
-    <div class="foto-perfil">
-      <img id="profileImg" src="../images/avatars/avatar1.png" alt="Avatar">
-      
-      <!-- Opciones de avatares -->
-      <div class="avatar-options" id="avatarOptions">
-        <p>Selecciona tu avatar:</p>
-        <div class="avatar-grid">
-          <img src="../images/avatars/avatar1.png" data-avatar="avatar1.png" />
-          <img src="../images/avatars/avatar2.png" data-avatar="avatar2.png" />
-          <img src="../images/avatars/avatar3.png" data-avatar="avatar3.png" />
-          <img src="../images/avatars/avatar4.png" data-avatar="avatar4.png" />
-          <img src="../images/avatars/avatar5.png" data-avatar="avatar5.png" />
-          <img src="../images/avatars/avatar6.png" data-avatar="avatar6.png" />
-          <img src="../images/avatars/avatar7.png" data-avatar="avatar7.png" />
-          <img src="../images/avatars/avatar8.png" data-avatar="avatar8.png" />
-          <img src="../images/avatars/avatar9.png" data-avatar="avatar9.png" />
+  <div class="container">
+    <div class="card">
+      <div class="foto-perfil">
+        <img id="profileImg" src="../images/avatars/avatar1.png" alt="Avatar actual">
+
+        <!-- Opciones de avatares -->
+        <div class="avatar-options" id="avatarOptions">
+          <p>Selecciona tu avatar:</p>
+          <div class="avatar-grid">
+            <img src="../images/avatars/avatar1.png" data-avatar="avatar1.png" alt="Avatar 1" />
+            <img src="../images/avatars/avatar2.png" data-avatar="avatar2.png" alt="Avatar 2" />
+            <img src="../images/avatars/avatar3.png" data-avatar="avatar3.png" alt="Avatar 3" />
+            <img src="../images/avatars/avatar4.png" data-avatar="avatar4.png" alt="Avatar 4" />
+            <img src="../images/avatars/avatar5.png" data-avatar="avatar5.png" alt="Avatar 5" />
+            <img src="../images/avatars/avatar6.png" data-avatar="avatar6.png" alt="Avatar 6" />
+            <img src="../images/avatars/avatar7.png" data-avatar="avatar7.png" alt="Avatar 7" />
+            <img src="../images/avatars/avatar8.png" data-avatar="avatar8.png" alt="Avatar 8" />
+            <img src="../images/avatars/avatar9.png" data-avatar="avatar9.png" alt="Avatar 9" />
+          </div>
         </div>
+
+        <!-- Botón para cambiar avatar -->
+        <button id="changeAvatarBtn" class="btn small" style="display:none; margin-top:10px;">
+          Cambiar avatar
+        </button>
       </div>
 
-      <!-- Botón para cambiar avatar (oculto al inicio) -->
-      <button id="changeAvatarBtn" class="btn small" style="display:none; margin-top:10px;">
-        Cambiar avatar
-      </button>
-    </div>
-  </div>
-</div>
-
-
+      <!-- Información del usuario -->
       <h1>Bienvenido a tu oficina virtual</h1>
       <div class="user-info">
         <p><strong>Nombre:</strong> <span id="name"></span></p>
