@@ -1,16 +1,15 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>PorKCasare</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
 <header class="nav">
   <div class="brand">
-    <img src="images/logo.webp" alt="logo">
+    <img src="images/logo.webp" alt="logo" />
     <div><strong>PorKCasare</strong></div>
   </div>
   <div>
@@ -18,7 +17,6 @@
     <a class="btn" style="background:#06c" href="login.html">Registrarse</a>
   </div>
 </header>
-
 <main class="container">
   <section class="hero">
     <div style="flex:1">
@@ -36,19 +34,21 @@
         </div>
       </div>
     </div>
-
     <div style="width:420px">
       <div class="card">
         <div class="carousel" id="carousel">
-          <img src="images/costillas.jpg" class="active" alt="costillas">
-          <img src="images/chuleta.jpg" alt="chuleta">
-          <img src="images/imagen1.webp" alt="img1">
-          <img src="images/imagen2.jpg" alt="img2">
+          <img src="images/costillas.jpg" alt="Costillas" />
         </div>
         <div class="grid">
-          <div class="card">Fresco<div class="small">Cortes empacados al vacío</div></div>
-          <div class="card">Rápido<div class="small">Despachos inmediatos</div></div>
-          <div class="card">Confiable<div class="small">Trazabilidad completa</div></div>
+          <div class="card">Fresco
+            <div class="small">Cortes empacados al vacío</div>
+          </div>
+          <div class="card">Rápido
+            <div class="small">Despachos inmediatos</div>
+          </div>
+          <div class="card">Confiable
+            <div class="small">Trazabilidad completa</div>
+          </div>
         </div>
       </div>
     </div>
@@ -67,25 +67,28 @@
   <section style="margin-top:20px">
     <div class="card">
       <h4>Galería</h4>
-      <div class="carousel" style="height:200px">
-        <img src="images/chuleta.jpg" class="active">
+      <div class="gallery-grid">
+        <img src="images/costillas.jpg" alt="Costillas" />
+        <img src="images/chuleta.jpg" alt="Chuleta" />
+        <img src="images/imagen1.webp" alt="Imagen 1" />
+        <img src="images/imagen2.jpg" alt="Imagen 2" />
       </div>
     </div>
   </section>
 </main>
 
-<footer class="footer">© PorKCasare by F&F Asociados</footer>
+<footer class="footer">© PorKCasare by F&amp;F Asociados</footer>
 
-<!-- Carrusel automático -->
 <script>
-  const images = document.querySelectorAll("#carousel img");
-  let current = 0;
-
-  setInterval(() => {
-    images[current].classList.remove("active");
-    current = (current + 1) % images.length;
-    images[current].classList.add("active");
-  }, 4000);
+  const images = ['images/costillas.jpg','images/chuleta.jpg','images/imagen1.webp','images/imagen2.jpg'];
+  let i = 0;
+  const el = document.getElementById('carousel');
+  if(el){
+    setInterval(() => {
+      i = (i + 1) % images.length;
+      el.querySelector('img').src = images[i];
+    }, 4000);
+  }
 </script>
 
 <!-- Firebase SDKs -->
@@ -96,6 +99,6 @@
 <!-- Tus scripts -->
 <script type="module" src="./src/firebase-config.js"></script>
 <script type="module" src="./main.js"></script>
-
 </body>
 </html>
+
