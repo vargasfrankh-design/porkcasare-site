@@ -34,7 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutBtn.addEventListener('click', async () => {
           try {
             await signOut(auth);
-            localStorage.removeItem('theme'); // opcional
+            localStorage.removeItem('theme'); 
+            localStorage.removeItem('selectedAvatar'); // limpiar avatar local
             window.location.href = "../index.html";
           } catch (error) {
             console.error("❌ Error al cerrar sesión:", error);
@@ -43,19 +44,45 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
 
-      // --- Avatar ---
+      // --- Avatar SOLO localStorage ---
       const profileImg = document.getElementById('profileImg');
-      profileImg.src = userData.fotoURL || "images/avatars/avatar1.png";
+      const avatarGrid = document.querySelector('.avatar-grid');
+      const changeAvatarBtn = document.getElementById('changeAvatarBtn'); // botón que debes poner en tu HTML
 
+      // Cargar avatar desde localStorage (o por defecto)
+      const savedAvatar = localStorage.getItem('selectedAvatar');
+      profileImg.src = savedAvatar || userData.fotoURL || "images/avatars/avatar1.png";
+
+      // Seleccionar avatar
       document.querySelectorAll('.avatar-grid img').forEach(img => {
-        img.addEventListener('click', async () => {
+        img.addEventListener('click', () => {
           const selectedAvatar = `images/avatars/${img.dataset.avatar}`;
           profileImg.src = selectedAvatar;
+          localStorage.setItem('selectedAvatar', selectedAvatar);
 
-          await updateDoc(docRef, { fotoURL: selectedAvatar });
-          alert("✅ Avatar actualizado.");
+          // Ocultar grid y mostrar botón de cambio
+          avatarGrid.style.display = "none";
+          changeAvatarBtn.style.display = "inline-block";
+
+          alert("✅ Avatar actualizado (guardado localmente).");
         });
       });
+
+      // Mostrar selector al hacer clic en "Cambiar avatar"
+      if (changeAvatarBtn) {
+        changeAvatarBtn.addEventListener('click', () => {
+          avatarGrid.style.display = "grid";
+          changeAvatarBtn.style.display = "none";
+        });
+      }
+
+      // Inicialmente ocultar grid si ya hay avatar
+      if (savedAvatar) {
+        avatarGrid.style.display = "none";
+        changeAvatarBtn.style.display = "inline-block";
+      } else {
+        changeAvatarBtn.style.display = "none";
+      }
 
       // --- Historial ---
       const historyContainer = document.getElementById('history');
@@ -134,4 +161,6 @@ document.addEventListener('DOMContentLoaded', () => {
       alert("Error al cargar los datos. Intente más tarde.");
     }
   });
+});
+
 });
