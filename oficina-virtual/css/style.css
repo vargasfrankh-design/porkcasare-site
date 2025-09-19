@@ -301,3 +301,22 @@ body.dark .nav {
   font-size: 14px;
   padding: 6px 12px;
 }
+
+/* ========= Alerta de Activación ========= */
+.activation-alert {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 12px 20px;
+  margin-bottom: 20px;
+  border: 1px solid #ffeeba;
+  border-radius: 6px;
+  font-size: 15px;
+  text-align: center;
+}
+
+/* Modo oscuro para la alerta */
+body.dark .activation-alert {
+  background-color: #3a2f00;
+  color: #ffecb5;
+  border-color: #665c02;
+}
