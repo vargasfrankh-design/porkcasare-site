@@ -30,6 +30,8 @@
       color: #0d6efd;
     }
   </style>
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 
@@ -49,21 +51,21 @@
         </select>
       </div>
 
-     <!-- País / Provincia / Ciudad -->
-<div class="form-group">
-  <label for="pais">País</label>
-  <select id="pais" class="form-control" required></select>
-</div>
+      <!-- País / Provincia / Ciudad -->
+      <div class="form-group">
+        <label for="pais">País</label>
+        <select id="pais" class="form-control" required></select>
+      </div>
 
-<div class="form-group">
-  <label for="provincia">Provincia / Departamento</label>
-  <select id="provincia" class="form-control" required></select>
-</div>
+      <div class="form-group">
+        <label for="provincia">Provincia / Departamento</label>
+        <select id="provincia" class="form-control" required></select>
+      </div>
 
-<div class="form-group">
-  <label for="ciudad">Ciudad / Municipio</label>
-  <select id="ciudad" class="form-control" required></select>
-</div>
+      <div class="form-group">
+        <label for="ciudad">Ciudad / Municipio</label>
+        <select id="ciudad" class="form-control" required></select>
+      </div>
 
       <!-- Usuario / Contraseña -->
       <div class="mb-3">
@@ -104,25 +106,25 @@
       </div>
 
       <!-- Documento -->
-<div class="mb-3">
-  <label class="form-label">Tipo de documento</label>
-  <select id="tipoDocumento" class="form-select" required>
-    <option value="">Seleccione...</option>
-    <option value="CC">Cédula de ciudadanía</option>
-    <option value="TI">Tarjeta de identidad</option>
-    <option value="CE">Cédula de extranjería</option>
-  </select>
-</div>
-<div class="mb-3">
-  <label class="form-label">Número de documento</label>
-  <input type="text" id="numeroDocumento" class="form-control" required>
-</div>
+      <div class="mb-3">
+        <label class="form-label">Tipo de documento</label>
+        <select id="tipoDocumento" class="form-select" required>
+          <option value="">Seleccione...</option>
+          <option value="CC">Cédula de ciudadanía</option>
+          <option value="TI">Tarjeta de identidad</option>
+          <option value="CE">Cédula de extranjería</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Número de documento</label>
+        <input type="text" id="numeroDocumento" class="form-control" required pattern="[0-9]+" title="Solo números">
+      </div>
 
       <!-- Patrocinador -->
-<div class="mb-3">
-  <label class="form-label">Patrocinador</label>
-  <input type="text" id="patrocinador" class="form-control">
-</div>
+      <div class="mb-3">
+        <label class="form-label">Patrocinador</label>
+        <input type="text" id="patrocinador" class="form-control">
+      </div>
 
       <!-- Contacto -->
       <div class="mb-3">
@@ -131,7 +133,7 @@
       </div>
       <div class="mb-3">
         <label class="form-label">Celular</label>
-        <input type="tel" id="celular" class="form-control" required>
+        <input type="tel" id="celular" class="form-control" required pattern="[0-9]+" title="Solo números">
       </div>
       <div class="mb-3">
         <label class="form-label">Dirección de envío</label>
@@ -139,7 +141,7 @@
       </div>
       <div class="mb-3">
         <label class="form-label">Código postal</label>
-        <input type="text" id="codigoPostal" class="form-control">
+        <input type="text" id="codigoPostal" class="form-control" pattern="[0-9]*" title="Solo números">
       </div>
 
       <!-- Aceptar términos -->
@@ -158,21 +160,80 @@
     </form>
   </div>
   
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js"></script>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js"></script>
 
-<!-- Configuración Firebase -->
-<script type="module" src="./src/firebase-config.js"></script>
+  <!-- Configuración Firebase -->
+  <script type="module" src="./src/firebase-config.js"></script>
 
-<!-- Tu lógica principal -->
-<script type="module" src="./main.js"></script>
+  <!-- Tu lógica principal -->
+  <script type="module" src="./main.js"></script>
 
-<!-- Bootstrap -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Bootstrap -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- Ubicaciones dinámicas -->
-<script src="js/location.js"></script>
+  <!-- Ubicaciones dinámicas -->
+  <script src="js/location.js"></script>
+
+  <!-- Validación personalizada con SweetAlert -->
+  <script>
+    document.getElementById("registerForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+
+      // Obtener valores y limpiar espacios
+      const usuario = document.getElementById("usuario").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const confirmPassword = document.getElementById("confirmPassword").value.trim();
+      const nombre = document.getElementById("nombre").value.trim();
+      const apellido = document.getElementById("apellido").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const celular = document.getElementById("celular").value.trim();
+      const direccion = document.getElementById("direccion").value.trim();
+      const numeroDocumento = document.getElementById("numeroDocumento").value.trim();
+
+      // Validación campos vacíos
+      if (!usuario || !password || !confirmPassword || !nombre || !apellido || !email || !celular || !direccion || !numeroDocumento) {
+        Swal.fire({
+          icon: "warning",
+          title: "Campos incompletos",
+          text: "Por favor completa todos los campos obligatorios."
+        });
+        return;
+      }
+
+      // Validación contraseñas
+      if (password !== confirmPassword) {
+        Swal.fire({
+          icon: "error",
+          title: "Contraseñas no coinciden",
+          text: "Debes asegurarte de que ambas contraseñas sean iguales."
+        });
+        return;
+      }
+
+      // Validación solo números
+      const regexNumeros = /^[0-9]+$/;
+      if (!regexNumeros.test(numeroDocumento) || !regexNumeros.test(celular)) {
+        Swal.fire({
+          icon: "error",
+          title: "Formato inválido",
+          text: "El documento y el celular deben contener solo números."
+        });
+        return;
+      }
+
+      // Si todo está bien
+      Swal.fire({
+        icon: "success",
+        title: "Registro válido",
+        text: "Tu información ha sido validada correctamente.",
+        confirmButtonText: "Continuar"
+      }).then(() => {
+        this.submit();
+      });
+    });
+  </script>
 </body>
 </html>
