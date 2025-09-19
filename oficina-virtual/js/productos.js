@@ -6,7 +6,6 @@ const productos = [
     descripcion: "Disfruta de la mejor selección de carne porcina empacada al vacío, lista para tu cocina. Este paquete incluye 15 kilos combinados de chuletas, costillas y paticas, ideal para familias o reuniones. Carne fresca, de calidad y lista para conservar o preparar.",
     imagen: "../images/productos/pack-inicial.jpg",
     precio: 300000
-    puntos: 10 Bv
   },
   {
     nombre: "Chuletas – 3 kg",
