@@ -3,6 +3,32 @@ import { auth, db } from "/src/firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
+// === Generar link de referido y botón copiar ===
+try {
+  const refInput = document.getElementById('refLink');
+  const copyBtn = document.getElementById('copyRefLink');
+  if (refInput && copyBtn && userData && userData.usuario) {
+    const link = `${window.location.origin}/register.html?patrocinador=${encodeURIComponent(userData.usuario)}`;
+    refInput.value = link;
+
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(link);
+        copyBtn.textContent = '¡Copiado!';
+        setTimeout(() => copyBtn.textContent = 'Copiar', 1500);
+      } catch (err) {
+        // fallback antiguo
+        refInput.select();
+        document.execCommand('copy');
+        copyBtn.textContent = '¡Copiado!';
+        setTimeout(() => copyBtn.textContent = 'Copiar', 1500);
+      }
+    });
+  }
+} catch(e) {
+  console.error('Error generando link de referido:', e);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
