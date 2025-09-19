@@ -1,9 +1,8 @@
 import { auth, db } from "./src/firebase-config.js";
 import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { setDoc, doc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { setDoc, doc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-
+// --------- Función: Verificar existencia del patrocinador ---------
 async function verifySponsorExists(sponsorCode) {
   if (!sponsorCode) return false;
   const usuariosCol = collection(db, 'usuarios');
@@ -12,15 +11,7 @@ async function verifySponsorExists(sponsorCode) {
   return !snap.empty;
 }
 
-// uso dentro del submit del registerForm:
-const sponsor = document.getElementById('patrocinador').value || null;
-const sponsorOk = await verifySponsorExists(sponsor);
-if (!sponsorOk) {
-  alert('El código del patrocinador no es válido. Verifique el enlace o escriba un patrocinador válido.');
-  return;
-}
-
-// ---- Datos de ubicación ----
+// --------- Datos de ubicación (puedes mover esto a un JSON externo si crece) ---------
 const dataUbicacion = {
   "Colombia": {
     "Boyacá": ["Tunja", "Duitama", "Sogamoso"],
@@ -32,14 +23,13 @@ const dataUbicacion = {
   }
 };
 
-// ---- Poblar select dinámico ----
+// --------- Poblar selects dinámicamente ---------
 const paisSelect = document.getElementById("pais");
 const provinciaSelect = document.getElementById("provincia");
 const ciudadSelect = document.getElementById("ciudad");
 
-// Agregar países
 Object.keys(dataUbicacion).forEach(pais => {
-  let option = document.createElement("option");
+  const option = document.createElement("option");
   option.value = pais;
   option.textContent = pais;
   paisSelect.appendChild(option);
@@ -49,9 +39,9 @@ paisSelect.addEventListener("change", () => {
   provinciaSelect.innerHTML = "<option value=''>Seleccione...</option>";
   ciudadSelect.innerHTML = "<option value=''>Seleccione...</option>";
 
-  let provincias = Object.keys(dataUbicacion[paisSelect.value] || {});
+  const provincias = Object.keys(dataUbicacion[paisSelect.value] || {});
   provincias.forEach(prov => {
-    let option = document.createElement("option");
+    const option = document.createElement("option");
     option.value = prov;
     option.textContent = prov;
     provinciaSelect.appendChild(option);
@@ -60,58 +50,68 @@ paisSelect.addEventListener("change", () => {
 
 provinciaSelect.addEventListener("change", () => {
   ciudadSelect.innerHTML = "<option value=''>Seleccione...</option>";
-  let ciudades = dataUbicacion[paisSelect.value]?.[provinciaSelect.value] || [];
-  ciudades.forEach(c => {
-    let option = document.createElement("option");
-    option.value = c;
-    option.textContent = c;
+
+  const ciudades = dataUbicacion[paisSelect.value]?.[provinciaSelect.value] || [];
+  ciudades.forEach(ciudad => {
+    const option = document.createElement("option");
+    option.value = ciudad;
+    option.textContent = ciudad;
     ciudadSelect.appendChild(option);
   });
 });
 
-// Evento de submit del formulario de registro
+// --------- Evento: Envío del formulario ---------
 document.getElementById("registerForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-  const confirmPassword = document.getElementById("confirmPassword").value;
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const confirmPassword = document.getElementById("confirmPassword").value.trim();
+  const sponsor = document.getElementById("patrocinador").value.trim();
 
   if (password !== confirmPassword) {
     alert("❌ Las contraseñas no coinciden");
     return;
   }
 
+  // Validar patrocinador
+  const sponsorOk = await verifySponsorExists(sponsor);
+  if (!sponsorOk) {
+    alert("❌ El código del patrocinador no es válido. Verifique el enlace o escriba un patrocinador válido.");
+    return;
+  }
+
   try {
     // Crear usuario en Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const uid = userCredential.user.uid;
 
-    // Guardar datos adicionales en Firestore
-    await setDoc(doc(db, "usuarios", userCredential.user.uid), {
+    // Guardar datos en Firestore
+    await setDoc(doc(db, "usuarios", uid), {
       tipoRegistro: document.getElementById("tipoRegistro").value,
       pais: document.getElementById("pais").value,
       provincia: document.getElementById("provincia").value,
       ciudad: document.getElementById("ciudad").value,
-      patrocinador: document.getElementById("patrocinador").value,
-      usuario: document.getElementById("usuario").value,
-      nombre: document.getElementById("nombre").value,
-      apellido: document.getElementById("apellido").value,
+      patrocinador: sponsor,
+      usuario: document.getElementById("usuario").value.trim(),
+      nombre: document.getElementById("nombre").value.trim(),
+      apellido: document.getElementById("apellido").value.trim(),
       sexo: document.getElementById("sexo").value,
       fechaNacimiento: document.getElementById("fechaNacimiento").value,
       tipoDocumento: document.getElementById("tipoDocumento").value,
-      numeroDocumento: document.getElementById("numeroDocumento").value,
+      numeroDocumento: document.getElementById("numeroDocumento").value.trim(),
       email: email,
-      direccion: document.getElementById("direccion").value,
-      celular: document.getElementById("celular").value,
-      codigoPostal: document.getElementById("codigoPostal").value,
+      direccion: document.getElementById("direccion").value.trim(),
+      celular: document.getElementById("celular").value.trim(),
+      codigoPostal: document.getElementById("codigoPostal").value.trim(),
       creadoEn: new Date()
     });
 
     alert("✅ Registro exitoso. Ahora puede iniciar sesión.");
-    window.location.href = "distribuidor-login.html"; // Redirección automática
+    window.location.href = "distribuidor-login.html";
 
   } catch (error) {
-    console.error("Error en registro:", error.message);
-    alert("❌ Error: " + error.message);
+    console.error("Error en registro:", error);
+    alert("❌ Error en el registro: " + error.message);
   }
 });
