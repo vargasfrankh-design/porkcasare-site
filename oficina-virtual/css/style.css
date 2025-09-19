@@ -229,6 +229,44 @@ body.dark .nav {
   font-weight: 600;
 }
 
-@media (max-width: 600px) {
-  .mlm-table th, .mlm-table td { padding: 6px; font-size: 12px; }
+/* =========================
+   Estilos para Red Unilevel
+   ========================= */
+
+#treeWrap { width:100%; height:460px; border-radius:6px; background:linear-gradient(180deg,#fff,#fbfdff); overflow:auto; }
+
+.stat { background:#fbfdff; padding:8px 12px; border-radius:8px; border:1px solid #eef6ff; min-width:160px; }
+
+/* SVG node styles (pintadas desde JS con atributos y clases) */
+.node-rect { fill:#ffffff; stroke:#2b92e6; stroke-width:2; rx:8; ry:8; }
+.node-root { fill:#2b9df3 !important; }
+.node-active { fill:#28a745 !important; }
+.node-inactive { fill:#cfcfcf !important; }
+
+.link-line { stroke:#dfeeff; stroke-width:2; fill:none; }
+
+/* info-card flotante (detalles cuando haces click en nodo) */
+.info-card {
+  position: fixed;
+  right: 18px;
+  top: 120px;
+  width: 320px;
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+  display: none;
+  z-index: 9999;
+  border: 1px solid #e6eefb;
+}
+.info-card h3 { margin:0 0 6px 0; font-size:16px; }
+.info-card p { margin:6px 0; font-size:14px; color:#333; }
+
+/* pager buttons */
+.pager-btn { background:#f3f6fb; border:1px solid #dfe8f8; padding:6px 10px; border-radius:6px; margin-right:6px; cursor:pointer; }
+.pager-btn.active { background:#2b9df3; color:#fff; border-color:#1f7fc0; }
+
+@media (max-width: 800px) {
+  .stat { min-width:120px; }
+  .info-card { right:10px; left:10px; top:auto; bottom:10px; width:auto; }
 }
