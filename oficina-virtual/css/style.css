@@ -15,7 +15,7 @@ body {
 
 /* Barra superior */
 .nav {
-  background-color: #4a90e2; /* Azul tenue */
+  background-color: #4a90e2;
   color: #fff;
   padding: 10px 20px;
   display: flex;
@@ -137,12 +137,6 @@ body {
   border: 3px solid #007bff;
 }
 
-.foto-perfil input[type="file"] {
-  display: block;
-  margin: 0 auto;
-  padding: 5px;
-}
-
 .avatar-options {
   margin-top: 10px;
 }
@@ -168,7 +162,7 @@ body {
   border: 2px solid #007bff;
 }
 
-/* 🌙 Estilos para modo oscuro */
+/* 🌙 Modo oscuro */
 body.dark {
   background-color: #1e1e1e;
   color: #f4f4f4;
@@ -192,11 +186,7 @@ body.dark .nav {
   background-color: #333;
 }
 
-/* =========================
-   Bloque añadido - MLM
-   ========================= */
-
-/* ----- MLM simulation card (no invasivo) ----- */
+/* MLM Card */
 .mlm-card {
   background: #fff;
   border: 1px solid #e6e6e6;
@@ -229,15 +219,11 @@ body.dark .nav {
   font-weight: 600;
 }
 
-/* =========================
-   Estilos para Red Unilevel
-   ========================= */
-
+/* Red Unilevel */
 #treeWrap { width:100%; height:460px; border-radius:6px; background:linear-gradient(180deg,#fff,#fbfdff); overflow:auto; }
 
 .stat { background:#fbfdff; padding:8px 12px; border-radius:8px; border:1px solid #eef6ff; min-width:160px; }
 
-/* SVG node styles (pintadas desde JS con atributos y clases) */
 .node-rect { fill:#ffffff; stroke:#2b92e6; stroke-width:2; rx:8; ry:8; }
 .node-root { fill:#2b9df3 !important; }
 .node-active { fill:#28a745 !important; }
@@ -245,7 +231,6 @@ body.dark .nav {
 
 .link-line { stroke:#dfeeff; stroke-width:2; fill:none; }
 
-/* info-card flotante (detalles cuando haces click en nodo) */
 .info-card {
   position: fixed;
   right: 18px;
@@ -262,11 +247,57 @@ body.dark .nav {
 .info-card h3 { margin:0 0 6px 0; font-size:16px; }
 .info-card p { margin:6px 0; font-size:14px; color:#333; }
 
-/* pager buttons */
 .pager-btn { background:#f3f6fb; border:1px solid #dfe8f8; padding:6px 10px; border-radius:6px; margin-right:6px; cursor:pointer; }
 .pager-btn.active { background:#2b9df3; color:#fff; border-color:#1f7fc0; }
 
 @media (max-width: 800px) {
   .stat { min-width:120px; }
   .info-card { right:10px; left:10px; top:auto; bottom:10px; width:auto; }
+}
+
+/* ========== Productos ========== */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.product-card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  transition: transform 0.2s;
+}
+
+.product-card:hover {
+  transform: translateY(-4px);
+}
+
+.product-card img {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.product-card h4 {
+  font-size: 16px;
+  color: #222;
+  margin: 6px 0;
+}
+
+.product-card p {
+  font-size: 14px;
+  color: #555;
+  margin: 4px 0 8px;
+}
+
+.product-card .btn {
+  font-size: 14px;
+  padding: 6px 12px;
 }
