@@ -72,13 +72,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const avatarFromDB = userData.fotoURL;
 
 profileImg.onerror = function () {
-  this.src = "../images/avatars/avatar1.png"; // fallback si falla
+  this.src = "/images/avatars/avatar1.png"; // fallback si la imagen no carga
 };
 
-if (avatarFromDB && avatarFromDB.startsWith("images/")) {
-  profileImg.src = `../${avatarFromDB}`;
+if (avatarFromDB) {
+  profileImg.src = `/${avatarFromDB}`;
 } else {
-  profileImg.src = "../images/avatars/avatar1.png";
+  profileImg.src = "/images/avatars/avatar1.png";
 }
 
       // --- Selección de avatar ---
