@@ -70,11 +70,16 @@ document.addEventListener("DOMContentLoaded", () => {
       const changeAvatarBtn = document.getElementById("changeAvatarBtn");
 
       const avatarFromDB = userData.fotoURL;
-      if (avatarFromDB) {
-        profileImg.src = `../${avatarFromDB}`;
-      } else {
-        profileImg.src = "../images/avatars/avatar1.png";
-      }
+
+profileImg.onerror = function () {
+  this.src = "../images/avatars/avatar1.png"; // fallback si falla
+};
+
+if (avatarFromDB && avatarFromDB.startsWith("images/")) {
+  profileImg.src = `../${avatarFromDB}`;
+} else {
+  profileImg.src = "../images/avatars/avatar1.png";
+}
 
       // --- Selección de avatar ---
       document.querySelectorAll(".avatar-grid img").forEach((img) => {
