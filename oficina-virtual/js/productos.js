@@ -2,28 +2,28 @@
 
 const productos = [
   {
-    nombre: "Pack Inicial",
-    descripcion: "Incluye productos básicos para comenzar.",
+    nombre: "Paquete Inicial – 15 kg",
+    descripcion: "Disfruta de la mejor selección de carne porcina empacada al vacío, lista para tu cocina. Este paquete incluye 15 kilos combinados de chuletas, costillas y paticas, ideal para familias o reuniones. Carne fresca, de calidad y lista para conservar o preparar.",
     imagen: "../images/productos/pack-inicial.jpg",
-    precio: 59.99
+    precio: 300000
   },
   {
-    nombre: "Vitaminas Naturales",
-    descripcion: "Suplementos de alta calidad para tu bienestar.",
+    nombre: "Chuletas – 3 kg",
+    descripcion: "Chuletas de cerdo frescas y jugosas, empacadas al vacío para mantener su sabor y frescura. Perfectas para asar, freír o preparar en tus recetas favoritas.",
     imagen: "../images/productos/vitaminas.jpg",
-    precio: 29.99
+    precio: 60000
   },
   {
-    nombre: "Proteína de Cerdo",
-    descripcion: "Alta en proteína, ideal para atletas.",
+    nombre: "Costillitas – 3 kg",
+    descripcion: "Costillitas tiernas y llenas de sabor, listas para hornear, asar o guisar. Empacadas al vacío para conservar toda su frescura y calidad.",
     imagen: "../images/productos/proteina.jpg",
-    precio: 39.99
+    precio: 60000
   },
   {
-    nombre: "Combo Salud",
-    descripcion: "Combo de productos seleccionados por expertos.",
+    nombre: "Paticas o Pezuñitas – 3 kg",
+    descripcion: "Paticas o pezonitas de cerdo, perfectas para caldos, guisos o preparaciones tradicionales. Empacadas al vacío para garantizar su frescura y sabor auténtico.",
     imagen: "../images/productos/combo-salud.jpg",
-    precio: 79.99
+    precio: 60000
   }
 ];
 
