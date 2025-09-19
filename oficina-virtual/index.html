@@ -4,18 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Oficina Virtual - PorkCasare</title>
-  <!-- Ruta a tu CSS dentro de oficina-virtual/css/style.css -->
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
   <!-- Barra de navegación -->
   <nav class="nav">
     <div class="brand">
-      <!-- logo en la raíz /images/logo.webp -->
       <img src="/images/logo.webp" alt="PorkCasare" class="logo" />
       <h2>PorkCasare</h2>
     </div>
-
     <div class="nav-actions">
       <button id="toggleDarkMode" class="btn small">🌙</button>
       <button id="logoutBtn" class="btn btn-logout">🚪 Cerrar sesión</button>
@@ -26,10 +23,7 @@
   <div class="container">
     <div class="card">
       <div class="foto-perfil">
-        <!-- rutas relativas: desde oficina-virtual hacia /images -->
         <img id="profileImg" src="../images/avatars/avatar1.png" alt="Avatar actual">
-
-        <!-- Opciones de avatares -->
         <div class="avatar-options" id="avatarOptions">
           <p>Selecciona tu avatar:</p>
           <div class="avatar-grid">
@@ -44,83 +38,80 @@
             <img src="../images/avatars/avatar9.png" data-avatar="avatar9.png" alt="Avatar 9" />
           </div>
         </div>
-
         <button id="changeAvatarBtn" class="btn small" style="display:none; margin-top:10px;">
           Cambiar avatar
         </button>
       </div>
 
-      <!-- Información del usuario -->
       <h1>Bienvenido a tu oficina virtual</h1>
       <div class="user-info">
         <p><strong>Nombre:</strong> <span id="name">Cargando...</span></p>
         <p><strong>Email:</strong> <span id="email">Cargando...</span></p>
         <p><strong>Código:</strong> <span id="code">Cargando...</span></p>
         <p><strong>Puntos:</strong> <span id="points">0</span></p>
-        <!-- Link de referido (colocar donde quieras dentro de la oficina virtual) -->
-<div class="history-section">
-  <h2>Tu link de referido</h2>
-  <div class="ref-container" style="display:flex;gap:8px;align-items:center;">
-    <input type="text" id="refCode" readonly style="flex:1;padding:8px;border-radius:6px;border:1px solid #ddd" />
-    <button id="copyRef" class="btn small">Copiar</button>
-  </div>
-  <small style="color:#666">Comparte este enlace para que el campo "Patrocinador" se autocomplete al registrar.</small>
-</div>
 
+        <!-- Link de referido -->
+        <div class="history-section">
+          <h2>Tu link de referido</h2>
+          <div class="ref-container" style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="refCode" readonly style="flex:1;padding:8px;border-radius:6px;border:1px solid #ddd" />
+            <button id="copyRef" class="btn small">Copiar</button>
+          </div>
+          <small style="color:#666">Comparte este enlace para que el campo "Patrocinador" se autocomplete al registrar.</small>
+        </div>
 
-      <button id="btnRecompra" class="btn">Realizar recompra</button>
+        <button id="btnRecompra" class="btn">Realizar recompra</button>
 
-      <!-- Historial -->
-      <div class="history-section">
-        <h2>Historial</h2>
-        <div id="history" class="history-list"></div>
-      </div>
+        <!-- Productos -->
+        <div class="history-section">
+          <h2>Productos disponibles</h2>
+          <div id="productGrid" class="product-grid"></div>
+        </div>
 
-      <!-- Red -->
-      <div class="history-section">
-        <h2>Mi Red</h2>
+        <!-- Historial -->
+        <div class="history-section">
+          <h2>Historial</h2>
+          <div id="history" class="history-list"></div>
+        </div>
 
-        <!-- resumen y controles -->
-        <div id="network-controls" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
-          <div><strong>Total frontales:</strong> <span id="statFrontales">0</span></div>
-          <div><strong>Total en red (5 niveles):</strong> <span id="statTotal">0</span></div>
-          <div><strong>Activos este mes:</strong> <span id="statRecompra">0</span></div>
-
-          <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
-            <label for="pageSize" style="font-size:13px;color:#444;margin-right:6px;">Frontales por página:</label>
-            <select id="pageSize" style="padding:6px;border-radius:6px;border:1px solid #ddd;">
-              <option value="5" selected>5</option>
-              <option value="10">10</option>
-              <option value="15">15</option>
-            </select>
-            <button id="btnRefreshMap" class="btn small">Actualizar mapa</button>
+        <!-- Red -->
+        <div class="history-section">
+          <h2>Mi Red</h2>
+          <div id="network-controls" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+            <div><strong>Total frontales:</strong> <span id="statFrontales">0</span></div>
+            <div><strong>Total en red (5 niveles):</strong> <span id="statTotal">0</span></div>
+            <div><strong>Activos este mes:</strong> <span id="statRecompra">0</span></div>
+            <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+              <label for="pageSize" style="font-size:13px;color:#444;margin-right:6px;">Frontales por página:</label>
+              <select id="pageSize" style="padding:6px;border-radius:6px;border:1px solid #ddd;">
+                <option value="5" selected>5</option>
+                <option value="10">10</option>
+                <option value="15">15</option>
+              </select>
+              <button id="btnRefreshMap" class="btn small">Actualizar mapa</button>
+            </div>
+          </div>
+          <div id="mapContainer">
+            <div id="treeWrap" style="width:100%;height:460px;border:1px solid #eee;border-radius:6px;overflow:auto;background:#fff"></div>
+            <div id="treePager" style="margin-top:10px"></div>
           </div>
         </div>
 
-        <!-- Contenedor donde se inyecta el SVG/árbol -->
-        <div id="mapContainer">
-          <div id="treeWrap" style="width:100%;height:460px;border:1px solid #eee;border-radius:6px;overflow:auto;background:#fff"></div>
-          <div id="treePager" style="margin-top:10px"></div>
+        <!-- Bonos -->
+        <div class="history-section">
+          <h2>Bonos Multinivel</h2>
+          <div id="simulacion"></div>
         </div>
-      </div>
-
-      <!-- Bonos (lugar para la simulación) -->
-      <div class="history-section">
-        <h2>Bonos Multinivel</h2>
-        <div id="simulacion"></div>
       </div>
     </div>
   </div>
 
-  <!-- D3 (global) -->
+  <!-- Scripts -->
   <script src="https://d3js.org/d3.v7.min.js"></script>
-
-  <!-- TUS scripts existentes (con rutas relativas desde oficina-virtual/) -->
   <script type="module" src="js/distribuidor-lite.js"></script>
   <script type="module" src="js/mlm-simulation.js"></script>
-
-  <!-- NUEVO: red-unilevel.js (módulo ES) -->
   <script type="module" src="js/red-unilevel.js"></script>
+  <script type="module" src="js/productos.js"></script>
 </body>
 </html>
 
