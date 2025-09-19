@@ -3,32 +3,6 @@ import { auth, db } from "/src/firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-// === Generar link de referido y botón copiar ===
-try {
-  const refInput = document.getElementById('refLink');
-  const copyBtn = document.getElementById('copyRefLink');
-  if (refInput && copyBtn && userData && userData.usuario) {
-    const link = `${window.location.origin}/register.html?patrocinador=${encodeURIComponent(userData.usuario)}`;
-    refInput.value = link;
-
-    copyBtn.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(link);
-        copyBtn.textContent = '¡Copiado!';
-        setTimeout(() => copyBtn.textContent = 'Copiar', 1500);
-      } catch (err) {
-        // fallback antiguo
-        refInput.select();
-        document.execCommand('copy');
-        copyBtn.textContent = '¡Copiado!';
-        setTimeout(() => copyBtn.textContent = 'Copiar', 1500);
-      }
-    });
-  }
-} catch(e) {
-  console.error('Error generando link de referido:', e);
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
@@ -48,13 +22,33 @@ document.addEventListener("DOMContentLoaded", () => {
       const userData = docSnap.data();
 
       // --- Datos del usuario ---
-      document.getElementById("name").textContent = `${userData.nombre} ${userData.apellido}`;
-      document.getElementById("email").textContent = userData.email;
-      document.getElementById("code").textContent = userData.usuario;
+      document.getElementById("name").textContent = `${userData.nombre || ""} ${userData.apellido || ""}`;
+      document.getElementById("email").textContent = userData.email || "";
+      document.getElementById("code").textContent = userData.usuario || "";
       document.getElementById("points").textContent = userData.puntos || 0;
-      document.getElementById("refCode").value = `${window.location.origin}/registro?ref=${userData.usuario}`;
 
-      // --- Cerrar sesión ---
+      // --- Generar link de referido ---
+      const refInput = document.getElementById("refCode");
+      const copyBtn = document.getElementById("copyRef");
+      if (refInput && copyBtn && userData.usuario) {
+        const link = `${window.location.origin}/register.html?patrocinador=${encodeURIComponent(userData.usuario)}`;
+        refInput.value = link;
+
+        copyBtn.addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText(link);
+            copyBtn.textContent = "¡Copiado!";
+            setTimeout(() => (copyBtn.textContent = "Copiar"), 1500);
+          } catch (err) {
+            refInput.select();
+            document.execCommand("copy");
+            copyBtn.textContent = "¡Copiado!";
+            setTimeout(() => (copyBtn.textContent = "Copiar"), 1500);
+          }
+        });
+      }
+
+      // --- Botón Cerrar sesión ---
       const logoutBtn = document.getElementById("logoutBtn");
       if (logoutBtn) {
         logoutBtn.addEventListener("click", async () => {
@@ -77,12 +71,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const avatarFromDB = userData.fotoURL;
       if (avatarFromDB) {
-        profileImg.src = `../${avatarFromDB}`; // ruta relativa desde /oficina-virtual/
+        profileImg.src = `../${avatarFromDB}`;
       } else {
-        profileImg.src = "../images/avatars/avatar1.png"; // por defecto
+        profileImg.src = "../images/avatars/avatar1.png";
       }
 
-      // --- Selección de avatar y guardado en Firestore ---
+      // --- Selección de avatar ---
       document.querySelectorAll(".avatar-grid img").forEach((img) => {
         img.addEventListener("click", async () => {
           const selectedAvatar = `images/avatars/${img.dataset.avatar}`;
@@ -105,14 +99,14 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       // --- Mostrar botón para cambiar avatar ---
-      if (avatarFromDB) {
-        avatarGrid.style.display = "none";
-        changeAvatarBtn.style.display = "inline-block";
-      } else {
-        changeAvatarBtn.style.display = "none";
-      }
-
       if (changeAvatarBtn) {
+        if (avatarFromDB) {
+          avatarGrid.style.display = "none";
+          changeAvatarBtn.style.display = "inline-block";
+        } else {
+          changeAvatarBtn.style.display = "none";
+        }
+
         changeAvatarBtn.addEventListener("click", () => {
           avatarGrid.style.display = "grid";
           changeAvatarBtn.style.display = "none";
@@ -134,47 +128,41 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // --- Red ---
       const redList = document.getElementById("redReferidos");
-      redList.innerHTML = "";
-      (userData.red || []).forEach((nombre) => {
-        const li = document.createElement("li");
-        li.textContent = nombre;
-        redList.appendChild(li);
-      });
+      if (redList) {
+        redList.innerHTML = "";
+        (userData.red || []).forEach((nombre) => {
+          const li = document.createElement("li");
+          li.textContent = nombre;
+          redList.appendChild(li);
+        });
+      }
 
       // --- Recompra ---
-      document.getElementById("btnRecompra").addEventListener("click", async () => {
-        const fecha = new Date().toISOString().split("T")[0];
-        const newPoints = (userData.puntos || 0) + 100;
+      const btnRecompra = document.getElementById("btnRecompra");
+      if (btnRecompra) {
+        btnRecompra.addEventListener("click", async () => {
+          const fecha = new Date().toISOString().split("T")[0];
+          const newPoints = (userData.puntos || 0) + 100;
 
-        const newEntry = {
-          action: "Recompra realizada",
-          date: fecha,
-          amount: "$60.000",
-        };
+          const newEntry = {
+            action: "Recompra realizada",
+            date: fecha,
+            amount: "$60.000",
+          };
 
-        userData.puntos = newPoints;
-        userData.history = [newEntry, ...(userData.history || [])];
+          userData.puntos = newPoints;
+          userData.history = [newEntry, ...(userData.history || [])];
 
-        await updateDoc(docRef, {
-          puntos: newPoints,
-          history: userData.history,
+          await updateDoc(docRef, {
+            puntos: newPoints,
+            history: userData.history,
+          });
+
+          document.getElementById("points").textContent = newPoints;
+          renderHistory();
+          alert("✅ Recompra realizada y puntos actualizados.");
         });
-
-        document.getElementById("points").textContent = newPoints;
-        renderHistory();
-        alert("✅ Recompra realizada y puntos actualizados.");
-      });
-
-      // --- Copiar código referido ---
-      const btnCopy = document.getElementById("copyRef");
-      btnCopy.addEventListener("click", () => {
-        const input = document.getElementById("refCode");
-        input.select();
-        input.setSelectionRange(0, 99999);
-        document.execCommand("copy");
-        btnCopy.textContent = "¡Copiado!";
-        setTimeout(() => (btnCopy.textContent = "Copiar"), 2000);
-      });
+      }
 
       // --- Modo oscuro ---
       const toggleDarkMode = document.getElementById("toggleDarkMode");
