@@ -2,6 +2,24 @@ import { auth, db } from "./src/firebase-config.js";
 import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import { setDoc, doc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
+import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+async function verifySponsorExists(sponsorCode) {
+  if (!sponsorCode) return false;
+  const usuariosCol = collection(db, 'usuarios');
+  const q = query(usuariosCol, where('usuario', '==', sponsorCode));
+  const snap = await getDocs(q);
+  return !snap.empty;
+}
+
+// uso dentro del submit del registerForm:
+const sponsor = document.getElementById('patrocinador').value || null;
+const sponsorOk = await verifySponsorExists(sponsor);
+if (!sponsorOk) {
+  alert('El código del patrocinador no es válido. Verifique el enlace o escriba un patrocinador válido.');
+  return;
+}
+
 // ---- Datos de ubicación ----
 const dataUbicacion = {
   "Colombia": {
