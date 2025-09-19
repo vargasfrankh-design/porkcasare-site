@@ -234,12 +234,30 @@
         this.submit();
       });
     });
-  </script>
-  <!-- Patrocinador -->
+
+    <!-- Patrocinador -->
 <div class="mb-3">
   <label class="form-label">Patrocinador</label>
   <input type="text" id="patrocinador" name="patrocinador" class="form-control" placeholder="Código del patrocinador" required>
 </div>
+
+  </script>
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const sponsor = params.get('patrocinador');
+    if (sponsor) {
+      const field = document.getElementById('patrocinador');
+      if (field) {
+        // limpiar y seguridad básica
+        const clean = sponsor.replace(/[^a-zA-Z0-9_\-]/g, '').slice(0, 40);
+        field.value = clean;
+        field.readOnly = true;
+        field.classList.add('readonly'); // opcional para estilos
+      }
+    }
+  });
+</script>
 
 </body>
 </html>
