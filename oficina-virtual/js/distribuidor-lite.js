@@ -180,5 +180,13 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("🔥 Error al obtener datos del usuario:", error);
       alert("Error al cargar los datos. Intente más tarde.");
     }
+
+    // Suponiendo que ya tienes la variable de puntos cargada:
+const userPoints = parseInt(document.getElementById("points").innerText) || 0;
+
+const alertEl = document.getElementById("activationAlert");
+if (alertEl && userPoints < 50) {
+  alertEl.style.display = "block";
+}
   });
 });
