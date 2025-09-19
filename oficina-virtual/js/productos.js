@@ -4,25 +4,25 @@ const productos = [
   {
     nombre: "Paquete Inicial – 15 kg",
     descripcion: "Disfruta de la mejor selección de carne porcina empacada al vacío, lista para tu cocina. Este paquete incluye 15 kilos combinados de chuletas, costillas y paticas, ideal para familias o reuniones. Carne fresca, de calidad y lista para conservar o preparar.",
-    imagen: "../images/productos/pack-inicial.jpg",
+    imagen: "../images/productos/inicial.jpg",
     precio: 300000
   },
   {
     nombre: "Chuletas – 3 kg",
     descripcion: "Chuletas de cerdo frescas y jugosas, empacadas al vacío para mantener su sabor y frescura. Perfectas para asar, freír o preparar en tus recetas favoritas.",
-    imagen: "../images/productos/vitaminas.jpg",
+    imagen: "../images/productos/chuleta.jpg",
     precio: 60000
   },
   {
     nombre: "Costillitas – 3 kg",
     descripcion: "Costillitas tiernas y llenas de sabor, listas para hornear, asar o guisar. Empacadas al vacío para conservar toda su frescura y calidad.",
-    imagen: "../images/productos/proteina.jpg",
+    imagen: "../images/productos/costillas.jpg",
     precio: 60000
   },
   {
     nombre: "Paticas o Pezuñitas – 3 kg",
     descripcion: "Paticas o pezonitas de cerdo, perfectas para caldos, guisos o preparaciones tradicionales. Empacadas al vacío para garantizar su frescura y sabor auténtico.",
-    imagen: "../images/productos/combo-salud.jpg",
+    imagen: "../images/productos/paticas.jpg",
     precio: 60000
   }
 ];
