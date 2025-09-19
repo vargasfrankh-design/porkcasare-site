@@ -137,6 +137,12 @@ body {
   border: 3px solid #007bff;
 }
 
+.foto-perfil input[type="file"] {
+  display: block;
+  margin: 0 auto;
+  padding: 5px;
+}
+
 .avatar-options {
   margin-top: 10px;
 }
@@ -184,4 +190,45 @@ body.dark .btn:hover {
 
 body.dark .nav {
   background-color: #333;
+}
+
+/* =========================
+   Bloque añadido - MLM
+   ========================= */
+
+/* ----- MLM simulation card (no invasivo) ----- */
+.mlm-card {
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+  overflow-x: auto;
+}
+
+.mlm-card p { margin: 6px 0; font-size: 14px; color: #333; }
+
+.mlm-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.mlm-table th,
+.mlm-table td {
+  border: 1px solid #e8e8e8;
+  padding: 8px;
+  text-align: center;
+}
+
+.mlm-table th {
+  background: #007bff;
+  color: white;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .mlm-table th, .mlm-table td { padding: 6px; font-size: 12px; }
 }
