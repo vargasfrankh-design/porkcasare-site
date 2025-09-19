@@ -76,9 +76,9 @@ profileImg.onerror = function () {
 };
 
 if (avatarFromDB) {
-  profileImg.src = `/${avatarFromDB}`;
+  profileImg.src = `../${avatarFromDB}`;
 } else {
-  profileImg.src = "/images/avatars/avatar1.png";
+  profileImg.src = "../images/avatars/avatar1.png";
 }
 
       // --- Selección de avatar ---
