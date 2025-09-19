@@ -15,7 +15,7 @@ body {
 
 /* Barra superior */
 .nav {
-  background-color: #4a90e2;
+  background-color: #007bff;
   color: #fff;
   padding: 10px 20px;
   display: flex;
@@ -312,6 +312,7 @@ body.dark .nav {
   border-radius: 6px;
   font-size: 15px;
   text-align: center;
+  font-weight: bold; /* <-- Negrita */
 }
 
 /* Modo oscuro para la alerta */
@@ -319,4 +320,5 @@ body.dark .activation-alert {
   background-color: #3a2f00;
   color: #ffecb5;
   border-color: #665c02;
+  font-weight: bold; /* <-- Negrita también en modo oscuro */
 }
