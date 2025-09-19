@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Registro PorkCasare</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
   <style>
     body {
       background: #f5f9ff;
@@ -29,7 +30,12 @@
       text-decoration: none;
       color: #0d6efd;
     }
+    .readonly {
+      background-color: #e9ecef;
+      cursor: not-allowed;
+    }
   </style>
+
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
@@ -52,17 +58,17 @@
       </div>
 
       <!-- País / Provincia / Ciudad -->
-      <div class="form-group">
+      <div class="form-group mb-3">
         <label for="pais">País</label>
         <select id="pais" class="form-control" required></select>
       </div>
 
-      <div class="form-group">
+      <div class="form-group mb-3">
         <label for="provincia">Provincia / Departamento</label>
         <select id="provincia" class="form-control" required></select>
       </div>
 
-      <div class="form-group">
+      <div class="form-group mb-3">
         <label for="ciudad">Ciudad / Municipio</label>
         <select id="ciudad" class="form-control" required></select>
       </div>
@@ -92,6 +98,7 @@
           <input type="text" id="apellido" class="form-control" required>
         </div>
       </div>
+
       <div class="mb-3">
         <label class="form-label">Sexo</label>
         <select id="sexo" class="form-select" required>
@@ -100,6 +107,7 @@
           <option value="F">Femenino</option>
         </select>
       </div>
+
       <div class="mb-3">
         <label class="form-label">Fecha de nacimiento</label>
         <input type="date" id="fechaNacimiento" class="form-control" required>
@@ -115,6 +123,7 @@
           <option value="CE">Cédula de extranjería</option>
         </select>
       </div>
+
       <div class="mb-3">
         <label class="form-label">Número de documento</label>
         <input type="text" id="numeroDocumento" class="form-control" required pattern="[0-9]+" title="Solo números">
@@ -123,7 +132,7 @@
       <!-- Patrocinador -->
       <div class="mb-3">
         <label class="form-label">Patrocinador</label>
-        <input type="text" id="patrocinador" class="form-control">
+        <input type="text" id="patrocinador" name="patrocinador" class="form-control" placeholder="Código del patrocinador">
       </div>
 
       <!-- Contacto -->
@@ -159,7 +168,7 @@
       </div>
     </form>
   </div>
-  
+
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js"></script>
@@ -168,7 +177,7 @@
   <!-- Configuración Firebase -->
   <script type="module" src="./src/firebase-config.js"></script>
 
-  <!-- Tu lógica principal -->
+  <!-- Lógica principal -->
   <script type="module" src="./main.js"></script>
 
   <!-- Bootstrap -->
@@ -182,7 +191,6 @@
     document.getElementById("registerForm").addEventListener("submit", function(e) {
       e.preventDefault();
 
-      // Obtener valores y limpiar espacios
       const usuario = document.getElementById("usuario").value.trim();
       const password = document.getElementById("password").value.trim();
       const confirmPassword = document.getElementById("confirmPassword").value.trim();
@@ -193,7 +201,6 @@
       const direccion = document.getElementById("direccion").value.trim();
       const numeroDocumento = document.getElementById("numeroDocumento").value.trim();
 
-      // Validación campos vacíos
       if (!usuario || !password || !confirmPassword || !nombre || !apellido || !email || !celular || !direccion || !numeroDocumento) {
         Swal.fire({
           icon: "warning",
@@ -203,7 +210,6 @@
         return;
       }
 
-      // Validación contraseñas
       if (password !== confirmPassword) {
         Swal.fire({
           icon: "error",
@@ -213,7 +219,6 @@
         return;
       }
 
-      // Validación solo números
       const regexNumeros = /^[0-9]+$/;
       if (!regexNumeros.test(numeroDocumento) || !regexNumeros.test(celular)) {
         Swal.fire({
@@ -224,7 +229,6 @@
         return;
       }
 
-      // Si todo está bien
       Swal.fire({
         icon: "success",
         title: "Registro válido",
@@ -234,30 +238,24 @@
         this.submit();
       });
     });
-
-    <!-- Patrocinador -->
-<div class="mb-3">
-  <label class="form-label">Patrocinador</label>
-  <input type="text" id="patrocinador" name="patrocinador" class="form-control" placeholder="Código del patrocinador" required>
-</div>
-
   </script>
+
+  <!-- Autocompletar patrocinador desde URL -->
   <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const params = new URLSearchParams(window.location.search);
-    const sponsor = params.get('patrocinador');
-    if (sponsor) {
-      const field = document.getElementById('patrocinador');
-      if (field) {
-        // limpiar y seguridad básica
-        const clean = sponsor.replace(/[^a-zA-Z0-9_\-]/g, '').slice(0, 40);
-        field.value = clean;
-        field.readOnly = true;
-        field.classList.add('readonly'); // opcional para estilos
+    document.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const sponsor = params.get('patrocinador');
+      if (sponsor) {
+        const field = document.getElementById('patrocinador');
+        if (field) {
+          const clean = sponsor.replace(/[^a-zA-Z0-9_\-]/g, '').slice(0, 40);
+          field.value = clean;
+          field.readOnly = true;
+          field.classList.add('readonly');
+        }
       }
-    }
-  });
-</script>
+    });
+  </script>
 
 </body>
 </html>
