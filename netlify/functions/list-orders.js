@@ -29,7 +29,7 @@ exports.handler = async (event) => {
     }
 
     const snap = await db.collection('orders')
-      .where('status', 'in', ['pending_mp', 'pending_cash'])
+      .where('status', 'in', ['pending_mp', 'pending_cash', 'pending_delivery'])
       .get();
 
     const orders = await Promise.all(
