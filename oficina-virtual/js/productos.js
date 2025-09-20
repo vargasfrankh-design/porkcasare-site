@@ -36,7 +36,7 @@ function renderProductos() {
       <img src="${prod.imagen}" alt="${prod.nombre}">
       <h4>${prod.nombre}</h4>
       <p>${prod.descripcion}</p>
-      <p><strong>$${prod.precio.toFixed(2)}</strong></p>
+      <p><strong>${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(prod.precio)}</strong></p>
       <button class="btn small">Comprar</button>
     </div>
   `).join("");
