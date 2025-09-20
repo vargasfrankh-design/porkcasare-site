@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finalizar compra</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="checkout-container">
+    <h2>Finalizar Compra</h2>
+    <form id="checkoutForm">
+      <div>
+        <label>Método de entrega:</label><br>
+        <input type="radio" name="entrega" value="domicilio" checked> Domicilio<br>
+        <input type="radio" name="entrega" value="oficina"> Recoger en oficina
+      </div>
+
+      <div id="domicilioFields">
+        <label for="direccion">Dirección:</label>
+        <input type="text" id="direccion" required>
+
+        <label for="telefono">Teléfono:</label>
+        <input type="text" id="telefono" required>
+      </div>
+
+      <div>
+        <label for="observaciones">Observaciones:</label>
+        <textarea id="observaciones" placeholder="Ej: Entregar después de las 6pm"></textarea>
+      </div>
+
+      <button type="submit">Confirmar pedido</button>
+    </form>
+  </div>
+
+  <script type="module">
+    import { auth, db } from "/src/firebase-config.js";
+    import { doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+
+    // Obtener orderId de la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get("orderId");
+
+    const checkoutForm = document.getElementById("checkoutForm");
+    const domicilioFields = document.getElementById("domicilioFields");
+
+    // Mostrar/ocultar campos de dirección según la opción elegida
+    checkoutForm.addEventListener("change", (e) => {
+      if (e.target.name === "entrega") {
+        domicilioFields.style.display = e.target.value === "domicilio" ? "block" : "none";
+      }
+    });
+
+    // Prellenar con datos del usuario
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        alert("Debes iniciar sesión.");
+        window.location.href = "/distribuidor-login.html";
+        return;
+      }
+
+      const userSnap = await getDoc(doc(db, "usuarios", user.uid));
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        document.getElementById("direccion").value = data.direccion || "";
+        document.getElementById("telefono").value = data.celular || "";
+      }
+    });
+
+    // Guardar datos en la orden
+    checkoutForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const entrega = checkoutForm.querySelector("input[name='entrega']:checked").value;
+      const direccion = document.getElementById("direccion").value.trim();
+      const telefono = document.getElementById("telefono").value.trim();
+      const observaciones = document.getElementById("observaciones").value.trim();
+
+      try {
+        const orderRef = doc(db, "orders", orderId);
+        await updateDoc(orderRef, {
+          entrega,
+          direccion: entrega === "domicilio" ? direccion : null,
+          telefono: entrega === "domicilio" ? telefono : null,
+          observaciones,
+          status: "pending_delivery",
+          updatedAt: new Date().toISOString()
+        });
+
+        alert("✅ Pedido confirmado. Pronto nos pondremos en contacto.");
+        window.location.href = "/oficina-virtual/index.html";
+      } catch (err) {
+        console.error("Error guardando pedido:", err);
+        alert("Error al confirmar el pedido.");
+      }
+    });
+  </script>
+</body>
+</html>
