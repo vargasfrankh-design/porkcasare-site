@@ -1,7 +1,7 @@
-// ✅ Importaciones al inicio
+// oficina-virtual/js/distribuidor-lite.js
 import { auth, db } from "/src/firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { doc, getDoc, updateDoc, arrayUnion, increment } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   onAuthStateChanged(auth, async (user) => {
@@ -64,46 +64,41 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // --- Avatar desde Firestore ---
+      // --- Avatar desde Firestore (fallback, guardado de avatar en DB si quieres) ---
       const profileImg = document.getElementById("profileImg");
       const avatarGrid = document.querySelector(".avatar-grid");
       const changeAvatarBtn = document.getElementById("changeAvatarBtn");
 
+      profileImg.onerror = function () {
+        this.src = "/images/avatars/avatar1.png";
+      };
+
       const avatarFromDB = userData.fotoURL;
+      if (avatarFromDB) {
+        // si la ruta se guardó como "images/avatars/..." la mostramos con ../
+        profileImg.src = avatarFromDB.startsWith("http") ? avatarFromDB : `../${avatarFromDB}`;
+      } else {
+        profileImg.src = "../images/avatars/avatar1.png";
+      }
 
-profileImg.onerror = function () {
-  this.src = "/images/avatars/avatar1.png"; // fallback si la imagen no carga
-};
-
-if (avatarFromDB) {
-  profileImg.src = `../${avatarFromDB}`;
-} else {
-  profileImg.src = "../images/avatars/avatar1.png";
-}
-
-      // --- Selección de avatar ---
-      document.querySelectorAll(".avatar-grid img").forEach((img) => {
-        img.addEventListener("click", async () => {
-          const selectedAvatar = `images/avatars/${img.dataset.avatar}`;
+      // Seleccionar avatar (si quieres guardar en Firestore; actualmente lo guardamos en DB)
+      document.querySelectorAll(".avatar-grid img").forEach((imgEl) => {
+        imgEl.addEventListener("click", async () => {
+          const selectedAvatar = `images/avatars/${imgEl.dataset.avatar}`;
           try {
-            await updateDoc(docRef, {
-              fotoURL: selectedAvatar,
-            });
-
+            await updateDoc(docRef, { fotoURL: selectedAvatar });
             profileImg.src = `../${selectedAvatar}`;
             localStorage.setItem("selectedAvatar", selectedAvatar);
-
             avatarGrid.style.display = "none";
             changeAvatarBtn.style.display = "inline-block";
             alert("✅ Avatar actualizado correctamente.");
-          } catch (error) {
-            console.error("❌ Error al guardar avatar:", error);
-            alert("Error al guardar avatar en Firestore.");
+          } catch (err) {
+            console.error("❌ Error guardando avatar:", err);
+            alert("Error al actualizar avatar.");
           }
         });
       });
 
-      // --- Mostrar botón para cambiar avatar ---
       if (changeAvatarBtn) {
         if (avatarFromDB) {
           avatarGrid.style.display = "none";
@@ -111,14 +106,13 @@ if (avatarFromDB) {
         } else {
           changeAvatarBtn.style.display = "none";
         }
-
         changeAvatarBtn.addEventListener("click", () => {
           avatarGrid.style.display = "grid";
           changeAvatarBtn.style.display = "none";
         });
       }
 
-      // --- Historial ---
+      // Historial
       const historyContainer = document.getElementById("history");
       function renderHistory() {
         historyContainer.innerHTML = "";
@@ -131,7 +125,7 @@ if (avatarFromDB) {
       }
       renderHistory();
 
-      // --- Red ---
+      // Red sencilla
       const redList = document.getElementById("redReferidos");
       if (redList) {
         redList.innerHTML = "";
@@ -142,56 +136,27 @@ if (avatarFromDB) {
         });
       }
 
-      // --- Recompra ---
-      const btnRecompra = document.getElementById("btnRecompra");
-      if (btnRecompra) {
-        btnRecompra.addEventListener("click", async () => {
-          const fecha = new Date().toISOString().split("T")[0];
-          const newPoints = (userData.puntos || 0) + 100;
-
-          const newEntry = {
-            action: "Recompra realizada",
-            date: fecha,
-            amount: "$60.000",
-          };
-
-          userData.puntos = newPoints;
-          userData.history = [newEntry, ...(userData.history || [])];
-
-          await updateDoc(docRef, {
-            puntos: newPoints,
-            history: userData.history,
-          });
-
-          document.getElementById("points").textContent = newPoints;
-          renderHistory();
-          alert("✅ Recompra realizada y puntos actualizados.");
-        });
+      // Activación: mostrar alerta si puntos < 50
+      const userPoints = Number(userData.puntos || 0);
+      const alertEl = document.getElementById("activationAlert");
+      if (alertEl) {
+        if (userPoints < 50) alertEl.style.display = "block";
+        else alertEl.style.display = "none";
       }
 
-      // --- Modo oscuro ---
+      // modo oscuro preferencia
       const toggleDarkMode = document.getElementById("toggleDarkMode");
       if (toggleDarkMode) {
         toggleDarkMode.addEventListener("click", () => {
           document.body.classList.toggle("dark");
           localStorage.setItem("theme", document.body.classList.contains("dark") ? "dark" : "light");
         });
-
-        if (localStorage.getItem("theme") === "dark") {
-          document.body.classList.add("dark");
-        }
+        if (localStorage.getItem("theme") === "dark") document.body.classList.add("dark");
       }
+
     } catch (error) {
       console.error("🔥 Error al obtener datos del usuario:", error);
       alert("Error al cargar los datos. Intente más tarde.");
     }
-
-    // Suponiendo que ya tienes la variable de puntos cargada:
-const userPoints = parseInt(document.getElementById("points").innerText) || 0;
-
-const alertEl = document.getElementById("activationAlert");
-if (alertEl && userPoints < 50) {
-  alertEl.style.display = "block";
-}
   });
 });
