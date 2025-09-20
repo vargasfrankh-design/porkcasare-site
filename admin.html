@@ -2,99 +2,71 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Panel de Administración - PorkCasare</title>
-  <link rel="stylesheet" href="/oficina-virtual/css/style.css">
+  <title>Panel de Administración</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #fafafa; }
-    h1 { margin-bottom: 20px; }
-    .hidden { display: none; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { padding: 10px; border: 1px solid #ccc; text-align: left; }
-    th { background: #eee; }
-    button { padding: 5px 10px; margin: 2px; cursor: pointer; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    table, th, td {
+      border: 1px solid #ddd;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+    button {
+      margin-right: 5px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <h1>Panel de Administración</h1>
+  <p id="welcome"></p>
 
-  <!-- Formulario de login -->
-  <div id="loginSection">
-    <h2>Iniciar sesión</h2>
-    <form id="loginForm">
-      <label>Email:</label><br>
-      <input type="email" id="email" required><br><br>
-      <label>Contraseña:</label><br>
-      <input type="password" id="password" required><br><br>
-      <button type="submit">Ingresar</button>
-    </form>
-  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Producto</th>
+        <th>Comprador</th>
+        <th>Precio</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody id="ordersTable"></tbody>
+  </table>
 
-  <!-- Panel solo visible si es admin -->
-  <div id="adminPanel" class="hidden">
-    <h2>Órdenes pendientes</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Producto</th>
-          <th>Usuario</th>
-          <th>Precio</th>
-          <th>Estado</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody id="ordersTable"></tbody>
-    </table>
-    <button id="logoutBtn">Cerrar sesión</button>
-  </div>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
-  <script type="module">
-    import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-    import { auth, db } from "/src/firebase-config.js";
+  <script>
+    // 🔹 Configuración de Firebase
+    const firebaseConfig = {
+      apiKey: "TU_API_KEY",
+      authDomain: "TU_PROJECT.firebaseapp.com",
+      projectId: "TU_PROJECT_ID",
+    };
+    firebase.initializeApp(firebaseConfig);
 
-    const loginSection = document.getElementById("loginSection");
-    const adminPanel = document.getElementById("adminPanel");
-    const loginForm = document.getElementById("loginForm");
     const ordersTable = document.getElementById("ordersTable");
-    const logoutBtn = document.getElementById("logoutBtn");
 
-    // 🔹 Login
-    loginForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-      } catch (err) {
-        alert("Error en login: " + err.message);
-      }
-    });
-
-    // 🔹 Logout
-    logoutBtn.addEventListener("click", async () => {
-      await signOut(auth);
-    });
-
-    // 🔹 Chequear estado del usuario
-    onAuthStateChanged(auth, async (user) => {
+    // 🔹 Escucha de autenticación
+    firebase.auth().onAuthStateChanged(async (user) => {
       if (user) {
-        // Verificar rol admin en Firestore
-        const userDoc = await getDoc(doc(db, "usuarios", user.uid));
-        if (!userDoc.exists() || userDoc.data().role !== "admin") {
-          alert("Acceso denegado. No eres administrador.");
-          await signOut(auth);
-          return;
-        }
-
-        loginSection.classList.add("hidden");
-        adminPanel.classList.remove("hidden");
-
-        loadOrders(user);
+        document.getElementById("welcome").innerText = "Bienvenido, " + (user.email || user.uid);
+        await loadOrders(user);
       } else {
-        loginSection.classList.remove("hidden");
-        adminPanel.classList.add("hidden");
+        document.getElementById("welcome").innerText = "No has iniciado sesión.";
       }
     });
 
@@ -104,20 +76,23 @@
       const res = await fetch("/.netlify/functions/list-orders", {
         headers: { Authorization: `Bearer ${token}` }
       });
+
       if (!res.ok) {
         alert("Error cargando órdenes: " + res.status);
         return;
       }
-      const orders = await res.json();
+
+      const data = await res.json();  // 👈 data = { orders: [...] }
+      const orders = data.orders || [];  // 👈 array real de órdenes
 
       ordersTable.innerHTML = "";
       orders.forEach(order => {
         const row = document.createElement("tr");
         row.innerHTML = `
           <td>${order.id}</td>
-          <td>${order.productName}</td>
-          <td>${order.buyerUsername || order.buyerUid}</td>
-          <td>$${order.price}</td>
+          <td>${order.productName || "Sin nombre"}</td>
+          <td>${order.buyerUsername || order.buyerUid || "N/A"}</td>
+          <td>$${order.price || 0}</td>
           <td>${order.status}</td>
           <td>
             <button onclick="confirmOrder('${order.id}')">Confirmar</button>
@@ -128,44 +103,51 @@
       });
     }
 
-    // 🔹 Confirmar / Rechazar orden
-    window.confirmOrder = async function(orderId) {
-      const user = auth.currentUser;
+    // 🔹 Confirmar pedido
+    async function confirmOrder(orderId) {
+      const user = firebase.auth().currentUser;
+      if (!user) return alert("No autenticado");
+
       const token = await user.getIdToken();
       const res = await fetch("/.netlify/functions/confirm-order", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ orderId })
       });
+
       if (!res.ok) {
-        alert("Error confirmando: " + res.status);
+        alert("Error confirmando orden");
         return;
       }
-      alert("Orden confirmada");
+      alert("Orden confirmada ✅");
       loadOrders(user);
-    };
+    }
 
-    window.rejectOrder = async function(orderId) {
-      const user = auth.currentUser;
+    // 🔹 Rechazar pedido
+    async function rejectOrder(orderId) {
+      const user = firebase.auth().currentUser;
+      if (!user) return alert("No autenticado");
+
       const token = await user.getIdToken();
       const res = await fetch("/.netlify/functions/reject-order", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ orderId })
       });
+
       if (!res.ok) {
-        alert("Error rechazando: " + res.status);
+        alert("Error rechazando orden");
         return;
       }
-      alert("Orden rechazada");
+      alert("Orden rechazada ❌");
       loadOrders(user);
-    };
+    }
   </script>
 </body>
 </html>
