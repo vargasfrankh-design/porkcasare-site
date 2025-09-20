@@ -2,69 +2,42 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Panel de Administración</title>
+  <title>Panel de Administración - PorkCasare</title>
+  <link rel="stylesheet" href="/oficina-virtual/css/style.css">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    #loginForm, #adminPanel {
-      max-width: 400px;
-      margin: auto;
-    }
-    input {
-      display: block;
-      width: 100%;
-      margin: 10px 0;
-      padding: 10px;
-    }
-    button {
-      padding: 10px 15px;
-      margin: 5px 0;
-      cursor: pointer;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    table, th, td {
-      border: 1px solid #ddd;
-    }
-    th, td {
-      padding: 10px;
-      text-align: left;
-    }
-    #logoutBtn {
-      float: right;
-      background: #f44336;
-      color: white;
-      border: none;
-    }
+    body { font-family: Arial, sans-serif; padding: 20px; background: #fafafa; }
+    h1 { margin-bottom: 20px; }
+    .hidden { display: none; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 10px; border: 1px solid #ccc; text-align: left; }
+    th { background: #eee; }
+    button { padding: 5px 10px; margin: 2px; cursor: pointer; }
   </style>
 </head>
 <body>
   <h1>Panel de Administración</h1>
-  <p id="welcome"></p>
 
-  <!-- 🔹 Login -->
-  <div id="loginForm">
-    <h2>Iniciar Sesión</h2>
-    <input type="email" id="email" placeholder="Correo electrónico">
-    <input type="password" id="password" placeholder="Contraseña">
-    <button onclick="login()">Entrar</button>
+  <!-- Formulario de login -->
+  <div id="loginSection">
+    <h2>Iniciar sesión</h2>
+    <form id="loginForm">
+      <label>Email:</label><br>
+      <input type="email" id="email" required><br><br>
+      <label>Contraseña:</label><br>
+      <input type="password" id="password" required><br><br>
+      <button type="submit">Ingresar</button>
+    </form>
   </div>
 
-  <!-- 🔹 Panel de Admin -->
-  <div id="adminPanel" style="display:none;">
-    <button id="logoutBtn" onclick="logout()">Cerrar sesión</button>
-    <h2>Órdenes registradas</h2>
+  <!-- Panel solo visible si es admin -->
+  <div id="adminPanel" class="hidden">
+    <h2>Órdenes pendientes</h2>
     <table>
       <thead>
         <tr>
           <th>ID</th>
           <th>Producto</th>
-          <th>Comprador</th>
+          <th>Usuario</th>
           <th>Precio</th>
           <th>Estado</th>
           <th>Acciones</th>
@@ -72,79 +45,81 @@
       </thead>
       <tbody id="ordersTable"></tbody>
     </table>
+    <button id="logoutBtn">Cerrar sesión</button>
   </div>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script type="module">
+    import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import { auth, db } from "/src/firebase-config.js";
 
-  <script>
-    // 🔹 Configuración Firebase
-    const firebaseConfig = {
-      apiKey: "TU_API_KEY",
-      authDomain: "TU_PROJECT.firebaseapp.com",
-      projectId: "TU_PROJECT_ID",
-    };
-    firebase.initializeApp(firebaseConfig);
-
-    const ordersTable = document.getElementById("ordersTable");
-    const loginForm = document.getElementById("loginForm");
+    const loginSection = document.getElementById("loginSection");
     const adminPanel = document.getElementById("adminPanel");
-    const welcome = document.getElementById("welcome");
+    const loginForm = document.getElementById("loginForm");
+    const ordersTable = document.getElementById("ordersTable");
+    const logoutBtn = document.getElementById("logoutBtn");
 
-    // 🔹 Escucha de cambios de autenticación
-    firebase.auth().onAuthStateChanged(async (user) => {
-      if (user) {
-        loginForm.style.display = "none";
-        adminPanel.style.display = "block";
-        welcome.innerText = "Bienvenido, " + (user.email || user.uid);
-        await loadOrders(user);
-      } else {
-        loginForm.style.display = "block";
-        adminPanel.style.display = "none";
-        welcome.innerText = "No has iniciado sesión.";
+    // 🔹 Login
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (err) {
+        alert("Error en login: " + err.message);
       }
     });
 
-    // 🔹 Función Login
-    async function login() {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      try {
-        await firebase.auth().signInWithEmailAndPassword(email, password);
-      } catch (error) {
-        alert("Error al iniciar sesión: " + error.message);
-      }
-    }
-
     // 🔹 Logout
-    async function logout() {
-      await firebase.auth().signOut();
-    }
+    logoutBtn.addEventListener("click", async () => {
+      await signOut(auth);
+    });
 
-    // 🔹 Cargar órdenes desde Netlify Function
+    // 🔹 Chequear estado del usuario
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Verificar rol admin en Firestore
+        const userDoc = await getDoc(doc(db, "usuarios", user.uid));
+        if (!userDoc.exists() || userDoc.data().role !== "admin") {
+          alert("Acceso denegado. No eres administrador.");
+          await signOut(auth);
+          return;
+        }
+
+        loginSection.classList.add("hidden");
+        adminPanel.classList.remove("hidden");
+
+        loadOrders(user);
+      } else {
+        loginSection.classList.remove("hidden");
+        adminPanel.classList.add("hidden");
+      }
+    });
+
+    // 🔹 Cargar órdenes desde Netlify Function (adaptado con data.orders)
     async function loadOrders(user) {
       const token = await user.getIdToken();
       const res = await fetch("/.netlify/functions/list-orders", {
         headers: { Authorization: `Bearer ${token}` }
       });
-
       if (!res.ok) {
         alert("Error cargando órdenes: " + res.status);
         return;
       }
 
-      const data = await res.json();  // { orders: [...] }
-      const orders = data.orders || [];
+      const data = await res.json();  // 👈 ahora la respuesta es { orders: [...] }
+      const orders = data.orders || [];  // 👈 extraemos el array
 
       ordersTable.innerHTML = "";
       orders.forEach(order => {
         const row = document.createElement("tr");
         row.innerHTML = `
           <td>${order.id}</td>
-          <td>${order.productName || "Sin nombre"}</td>
-          <td>${order.buyerUsername || order.buyerUid || "N/A"}</td>
-          <td>$${order.price || 0}</td>
+          <td>${order.productName}</td>
+          <td>${order.buyerUsername || order.buyerUid}</td>
+          <td>$${order.price}</td>
           <td>${order.status}</td>
           <td>
             <button onclick="confirmOrder('${order.id}')">Confirmar</button>
@@ -155,51 +130,44 @@
       });
     }
 
-    // 🔹 Confirmar pedido
-    async function confirmOrder(orderId) {
-      const user = firebase.auth().currentUser;
-      if (!user) return alert("No autenticado");
-
+    // 🔹 Confirmar / Rechazar orden
+    window.confirmOrder = async function(orderId) {
+      const user = auth.currentUser;
       const token = await user.getIdToken();
       const res = await fetch("/.netlify/functions/confirm-order", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({ orderId })
       });
-
       if (!res.ok) {
-        alert("Error confirmando orden");
+        alert("Error confirmando: " + res.status);
         return;
       }
       alert("Orden confirmada ✅");
       loadOrders(user);
-    }
+    };
 
-    // 🔹 Rechazar pedido
-    async function rejectOrder(orderId) {
-      const user = firebase.auth().currentUser;
-      if (!user) return alert("No autenticado");
-
+    window.rejectOrder = async function(orderId) {
+      const user = auth.currentUser;
       const token = await user.getIdToken();
       const res = await fetch("/.netlify/functions/reject-order", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({ orderId })
       });
-
       if (!res.ok) {
-        alert("Error rechazando orden");
+        alert("Error rechazando: " + res.status);
         return;
       }
       alert("Orden rechazada ❌");
       loadOrders(user);
-    }
+    };
   </script>
 </body>
 </html>
