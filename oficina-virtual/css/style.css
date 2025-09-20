@@ -15,7 +15,7 @@ body {
 
 /* Barra superior */
 .nav {
-  background-color: #007bff;
+  background-color: #4a90e2; /* Azul tenue */
   color: #fff;
   padding: 10px 20px;
   display: flex;
@@ -72,7 +72,7 @@ body {
 
 /* Contenido principal */
 .container {
-  max-width: 800px;
+  max-width: 1000px;
   margin: 30px auto;
   padding: 20px;
 }
@@ -80,8 +80,8 @@ body {
 .card {
   background-color: #fff;
   border-radius: 8px;
-  padding: 30px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
 }
 
 .card h1 {
@@ -96,11 +96,11 @@ body {
 
 /* Historial */
 .history-section {
-  margin-top: 30px;
+  margin-top: 20px;
 }
 
 .history-section h2 {
-  font-size: 20px;
+  font-size: 18px;
   margin-bottom: 10px;
 }
 
@@ -125,18 +125,19 @@ body {
 /* Avatar */
 .foto-perfil {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .foto-perfil img {
-  width: 100px;
-  height: 100px;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
   object-fit: cover;
   margin-bottom: 10px;
   border: 3px solid #007bff;
 }
 
+/* Avatar grid */
 .avatar-options {
   margin-top: 10px;
 }
@@ -146,6 +147,7 @@ body {
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin-top: 10px;
+  justify-items: center;
 }
 
 .avatar-grid img {
@@ -154,76 +156,37 @@ body {
   border-radius: 50%;
   border: 2px solid transparent;
   cursor: pointer;
-  transition: transform 0.2s, border 0.2s;
+  transition: transform 0.15s, border 0.15s;
 }
 
 .avatar-grid img:hover {
-  transform: scale(1.1);
+  transform: scale(1.06);
   border: 2px solid #007bff;
 }
 
-/* 🌙 Modo oscuro */
-body.dark {
-  background-color: #1e1e1e;
-  color: #f4f4f4;
-}
-
-body.dark .card {
-  background-color: #2c2c2c;
-  color: #f4f4f4;
-}
-
-body.dark .btn {
-  background-color: #444;
-  color: #fff;
-}
-
-body.dark .btn:hover {
-  background-color: #666;
-}
-
-body.dark .nav {
-  background-color: #333;
-}
-
-/* MLM Card */
-.mlm-card {
-  background: #fff;
-  border: 1px solid #e6e6e6;
-  border-radius: 8px;
-  padding: 12px;
-  margin-top: 12px;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
-  overflow-x: auto;
-}
-
-.mlm-card p { margin: 6px 0; font-size: 14px; color: #333; }
-
-.mlm-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 10px;
-  font-size: 14px;
-}
-
-.mlm-table th,
-.mlm-table td {
-  border: 1px solid #e8e8e8;
-  padding: 8px;
+/* Activation alert */
+.activation-alert {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 12px 20px;
+  margin-bottom: 20px;
+  border: 1px solid #ffeeba;
+  border-radius: 6px;
+  font-size: 15px;
   text-align: center;
+  font-weight: bold;
 }
 
-.mlm-table th {
-  background: #007bff;
-  color: white;
-  font-weight: 600;
+/* Red Unilevel (map container) */
+#treeWrap {
+  width:100%;
+  height:460px;
+  border-radius:6px;
+  background:linear-gradient(180deg,#fff,#fbfdff);
+  overflow:auto;
 }
 
-/* Red Unilevel */
-#treeWrap { width:100%; height:460px; border-radius:6px; background:linear-gradient(180deg,#fff,#fbfdff); overflow:auto; }
-
-.stat { background:#fbfdff; padding:8px 12px; border-radius:8px; border:1px solid #eef6ff; min-width:160px; }
-
+/* node styles for d3 tree */
 .node-rect { fill:#ffffff; stroke:#2b92e6; stroke-width:2; rx:8; ry:8; }
 .node-root { fill:#2b9df3 !important; }
 .node-active { fill:#28a745 !important; }
@@ -231,6 +194,7 @@ body.dark .nav {
 
 .link-line { stroke:#dfeeff; stroke-width:2; fill:none; }
 
+/* info card (side) */
 .info-card {
   position: fixed;
   right: 18px;
@@ -244,23 +208,24 @@ body.dark .nav {
   z-index: 9999;
   border: 1px solid #e6eefb;
 }
-.info-card h3 { margin:0 0 6px 0; font-size:16px; }
-.info-card p { margin:6px 0; font-size:14px; color:#333; }
 
-.pager-btn { background:#f3f6fb; border:1px solid #dfe8f8; padding:6px 10px; border-radius:6px; margin-right:6px; cursor:pointer; }
+/* Pager */
+.pager-btn {
+  background:#f3f6fb;
+  border:1px solid #dfe8f8;
+  padding:6px 10px;
+  border-radius:6px;
+  margin-right:6px;
+  cursor:pointer;
+}
 .pager-btn.active { background:#2b9df3; color:#fff; border-color:#1f7fc0; }
 
-@media (max-width: 800px) {
-  .stat { min-width:120px; }
-  .info-card { right:10px; left:10px; top:auto; bottom:10px; width:auto; }
-}
-
-/* ========== Productos ========== */
+/* Productos */
 .product-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 20px;
-  margin-top: 20px;
+  margin-top: 12px;
 }
 
 .product-card {
@@ -270,12 +235,10 @@ body.dark .nav {
   padding: 12px;
   text-align: center;
   box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-  transition: transform 0.2s;
+  transition: transform 0.18s;
 }
 
-.product-card:hover {
-  transform: translateY(-4px);
-}
+.product-card:hover { transform: translateY(-4px); }
 
 .product-card img {
   width: 100%;
@@ -285,40 +248,13 @@ body.dark .nav {
   margin-bottom: 10px;
 }
 
-.product-card h4 {
-  font-size: 16px;
-  color: #222;
-  margin: 6px 0;
+/* Modo oscuro */
+body.dark {
+  background-color: #121216;
+  color: #e6eef8;
 }
 
-.product-card p {
-  font-size: 14px;
-  color: #555;
-  margin: 4px 0 8px;
-}
-
-.product-card .btn {
-  font-size: 14px;
-  padding: 6px 12px;
-}
-
-/* ========= Alerta de Activación ========= */
-.activation-alert {
-  background-color: #fff3cd;
-  color: #856404;
-  padding: 12px 20px;
-  margin-bottom: 20px;
-  border: 1px solid #ffeeba;
-  border-radius: 6px;
-  font-size: 15px;
-  text-align: center;
-  font-weight: bold; /* <-- Negrita */
-}
-
-/* Modo oscuro para la alerta */
-body.dark .activation-alert {
-  background-color: #3a2f00;
-  color: #ffecb5;
-  border-color: #665c02;
-  font-weight: bold; /* <-- Negrita también en modo oscuro */
-}
+body.dark .card { background-color: #1e1e24; color: #e6eef8; }
+body.dark .btn { background-color: #2f3748; color: #fff; }
+body.dark .nav { background-color: #0f1720; }
+body.dark .activation-alert { background-color: #3a2f00; color: #ffecb5; border-color: #665c02; }
