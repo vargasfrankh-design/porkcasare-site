@@ -7,6 +7,7 @@ const FIELD_USUARIO = "usuario";
 const FIELD_PATROCINADOR = "patrocinador";
 const FIELD_HISTORY = "history";
 
+// -------------------- UTILIDADES --------------------
 function isActiveThisMonth(uData) {
   const hist = uData[FIELD_HISTORY];
   if (Array.isArray(hist)) {
@@ -24,6 +25,9 @@ function isActiveThisMonth(uData) {
   return !!uData.active;
 }
 
+function clearElement(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+
+// -------------------- ÁRBOL UNILEVEL --------------------
 async function buildUnilevelTree(rootCode) {
   const usuariosCol = collection(db, "usuarios");
   const qRoot = query(usuariosCol, where(FIELD_USUARIO, "==", rootCode));
@@ -64,6 +68,7 @@ async function buildUnilevelTree(rootCode) {
   return rootNode;
 }
 
+// -------------------- PUNTOS DE EQUIPO --------------------
 async function calculateTeamPoints(userId) {
   let totalTeamPoints = 0;
   const queue = [userId];
@@ -88,8 +93,7 @@ async function calculateTeamPoints(userId) {
   return totalTeamPoints;
 }
 
-function clearElement(el) { while (el.firstChild) el.removeChild(el.firstChild); }
-
+// -------------------- RENDER ÁRBOL --------------------
 function renderTree(rootNode) {
   const treeWrap = document.getElementById("treeWrap");
   clearElement(treeWrap);
@@ -175,6 +179,7 @@ function updateStatsFromTree(rootNode){
   statRecompra.textContent = activos;
 }
 
+// -------------------- INFO CARD --------------------
 function createInfoCard() {
   let el = document.querySelector(".info-card");
   if (!el) {
@@ -213,6 +218,15 @@ function showInfoCard(node){
   el.querySelector("#ic-points").textContent = node.puntos || 0;
 }
 
+// -------------------- REFRESH TREE & TEAM --------------------
+async function refreshTreeAndStats(rootCode, userId){
+  const tree = await buildUnilevelTree(rootCode);
+  renderTree(tree);
+  const totalTeamPoints = await calculateTeamPoints(userId);
+  document.getElementById("teamPoints").textContent = totalTeamPoints;
+}
+
+// -------------------- LOGIN STATE --------------------
 onAuthStateChanged(auth, async (user)=>{
   if(!user){ window.location.href="/login.html"; return; }
   const userRef = doc(db,"usuarios",user.uid);
@@ -232,49 +246,74 @@ onAuthStateChanged(auth, async (user)=>{
 
     const totalTeamPoints = await calculateTeamPoints(user.uid);
     document.getElementById("teamPoints").textContent = totalTeamPoints;
-  }
 
-  const tree = await buildUnilevelTree(rootCode);
-  renderTree(tree);
+    const tree = await buildUnilevelTree(rootCode);
+    renderTree(tree);
 
-  document.getElementById("btnRefreshMap")?.addEventListener("click", async ()=>{
-    const t = await buildUnilevelTree(rootCode);
-    renderTree(t);
-  });
-
-  const profileImg = document.getElementById("profileImg");
-  const avatarGrid = document.querySelector(".avatar-grid");
-  const changeAvatarBtn = document.getElementById("changeAvatarBtn");
-  const savedAvatar = localStorage.getItem("selectedAvatar");
-  if(savedAvatar) { profileImg.src = savedAvatar; avatarGrid.style.display="none"; changeAvatarBtn.style.display="inline-block"; }
-  document.querySelectorAll(".avatar-grid img").forEach(img=>{
-    img.addEventListener("click", ()=>{
-      const selected = `../images/avatars/${img.dataset.avatar}`;
-      profileImg.src = selected;
-      localStorage.setItem("selectedAvatar", selected);
-      avatarGrid.style.display = "none";
-      changeAvatarBtn.style.display = "inline-block";
+    // -------------------- BOTÓN REFRESH MAP --------------------
+    document.getElementById("btnRefreshMap")?.addEventListener("click", async ()=>{
+      await refreshTreeAndStats(rootCode, user.uid);
     });
-  });
-  changeAvatarBtn?.addEventListener("click", ()=>{ avatarGrid.style.display="grid"; changeAvatarBtn.style.display="none"; });
 
-  document.getElementById("copyRef")?.addEventListener("click", ()=>{
-    const input = document.getElementById("refCode");
-    input.select();
-    document.execCommand('copy');
-    alert("Enlace copiado");
-  });
+    // -------------------- BOTÓN CONFIRMAR ORDEN --------------------
+    document.getElementById("btnConfirmOrder")?.addEventListener("click", async ()=>{
+      const orderId = document.getElementById("orderIdInput").value;
+      if(!orderId) return alert("Debe seleccionar una orden");
+      const token = await auth.currentUser.getIdToken();
 
-  document.getElementById("logoutBtn")?.addEventListener("click", async ()=>{
-    try{ await signOut(auth); localStorage.removeItem("selectedAvatar"); window.location.href = "../index.html"; } catch(e){ console.error(e); }
-  });
-
-  const toggleDarkMode = document.getElementById("toggleDarkMode");
-  if(toggleDarkMode){
-    toggleDarkMode.addEventListener("click", ()=>{
-      document.body.classList.toggle("dark");
-      localStorage.setItem('theme', document.body.classList.contains('dark')?'dark':'light');
+      try{
+        const resp = await fetch("/.netlify/functions/confirm-order", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + token },
+          body: JSON.stringify({ orderId, action: "confirm" })
+        });
+        const data = await resp.json();
+        alert(data.message || "Orden confirmada");
+        await refreshTreeAndStats(rootCode, user.uid);
+      }catch(e){
+        console.error(e);
+        alert("Error al confirmar la orden");
+      }
     });
-    if(localStorage.getItem('theme')==='dark') document.body.classList.add('dark');
+
+    // -------------------- AVATAR --------------------
+    const profileImg = document.getElementById("profileImg");
+    const avatarGrid = document.querySelector(".avatar-grid");
+    const changeAvatarBtn = document.getElementById("changeAvatarBtn");
+    const savedAvatar = localStorage.getItem("selectedAvatar");
+    if(savedAvatar) { profileImg.src = savedAvatar; avatarGrid.style.display="none"; changeAvatarBtn.style.display="inline-block"; }
+    document.querySelectorAll(".avatar-grid img").forEach(img=>{
+      img.addEventListener("click", ()=>{
+        const selected = `../images/avatars/${img.dataset.avatar}`;
+        profileImg.src = selected;
+        localStorage.setItem("selectedAvatar", selected);
+        avatarGrid.style.display = "none";
+        changeAvatarBtn.style.display="inline-block";
+      });
+    });
+    changeAvatarBtn?.addEventListener("click", ()=>{ avatarGrid.style.display="grid"; changeAvatarBtn.style.display="none"; });
+
+    // -------------------- COPY REF --------------------
+    document.getElementById("copyRef")?.addEventListener("click", ()=>{
+      const input = document.getElementById("refCode");
+      input.select();
+      document.execCommand('copy');
+      alert("Enlace copiado");
+    });
+
+    // -------------------- LOGOUT --------------------
+    document.getElementById("logoutBtn")?.addEventListener("click", async ()=>{
+      try{ await signOut(auth); localStorage.removeItem("selectedAvatar"); window.location.href = "../index.html"; } catch(e){ console.error(e); }
+    });
+
+    // -------------------- DARK MODE --------------------
+    const toggleDarkMode = document.getElementById("toggleDarkMode");
+    if(toggleDarkMode){
+      toggleDarkMode.addEventListener("click", ()=>{
+        document.body.classList.toggle("dark");
+        localStorage.setItem('theme', document.body.classList.contains('dark')?'dark':'light');
+      });
+      if(localStorage.getItem('theme')==='dark') document.body.classList.add('dark');
+    }
   }
 });
