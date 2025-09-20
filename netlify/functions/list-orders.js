@@ -41,9 +41,11 @@ exports.handler = async (event) => {
       ...d.data()
     }));
 
+    // 🔑 Importante: devolver objeto con propiedad orders
     return { statusCode: 200, body: JSON.stringify({ orders }) };
   } catch (err) {
     console.error(err);
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 };
+
