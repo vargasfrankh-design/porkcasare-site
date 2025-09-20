@@ -1,7 +1,19 @@
 // oficina-virtual/js/distribuidor-lite.js
 import { auth, db } from "/src/firebase-config.js";
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { doc, getDoc, updateDoc, arrayUnion, increment } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import {
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  arrayUnion
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   onAuthStateChanged(auth, async (user) => {
@@ -26,6 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("email").textContent = userData.email || "";
       document.getElementById("code").textContent = userData.usuario || "";
       document.getElementById("points").textContent = userData.puntos || 0;
+      document.getElementById("teamPoints").textContent = userData.teamPoints || 0;
 
       // --- Generar link de referido ---
       const refInput = document.getElementById("refCode");
@@ -64,7 +77,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // --- Avatar desde Firestore (fallback, guardado de avatar en DB si quieres) ---
+      // --- Avatar desde Firestore ---
       const profileImg = document.getElementById("profileImg");
       const avatarGrid = document.querySelector(".avatar-grid");
       const changeAvatarBtn = document.getElementById("changeAvatarBtn");
@@ -75,13 +88,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const avatarFromDB = userData.fotoURL;
       if (avatarFromDB) {
-        // si la ruta se guardó como "images/avatars/..." la mostramos con ../
         profileImg.src = avatarFromDB.startsWith("http") ? avatarFromDB : `../${avatarFromDB}`;
       } else {
         profileImg.src = "../images/avatars/avatar1.png";
       }
 
-      // Seleccionar avatar (si quieres guardar en Firestore; actualmente lo guardamos en DB)
       document.querySelectorAll(".avatar-grid img").forEach((imgEl) => {
         imgEl.addEventListener("click", async () => {
           const selectedAvatar = `images/avatars/${imgEl.dataset.avatar}`;
@@ -112,7 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // Historial
+      // --- Historial ---
       const historyContainer = document.getElementById("history");
       function renderHistory() {
         historyContainer.innerHTML = "";
@@ -125,7 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       renderHistory();
 
-      // Red sencilla
+      // --- Red sencilla ---
       const redList = document.getElementById("redReferidos");
       if (redList) {
         redList.innerHTML = "";
@@ -136,22 +147,89 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // Activación: mostrar alerta si puntos < 50
+      // --- Activación: alerta si puntos < 50 ---
       const userPoints = Number(userData.puntos || 0);
       const alertEl = document.getElementById("activationAlert");
       if (alertEl) {
-        if (userPoints < 50) alertEl.style.display = "block";
-        else alertEl.style.display = "none";
+        alertEl.style.display = userPoints < 50 ? "block" : "none";
       }
 
-      // modo oscuro preferencia
+      // --- Modo oscuro preferencia ---
       const toggleDarkMode = document.getElementById("toggleDarkMode");
       if (toggleDarkMode) {
         toggleDarkMode.addEventListener("click", () => {
           document.body.classList.toggle("dark");
-          localStorage.setItem("theme", document.body.classList.contains("dark") ? "dark" : "light");
+          localStorage.setItem(
+            "theme",
+            document.body.classList.contains("dark") ? "dark" : "light"
+          );
         });
-        if (localStorage.getItem("theme") === "dark") document.body.classList.add("dark");
+        if (localStorage.getItem("theme") === "dark") {
+          document.body.classList.add("dark");
+        }
+      }
+
+      // --- Procesar bono inicial (v9) ---
+      async function processInitialPack(userId, sponsorId) {
+        const userRef = doc(db, "usuarios", userId);
+        const userSnap = await getDoc(userRef);
+
+        if (!userSnap.exists()) return;
+
+        const userData = userSnap.data();
+
+        if (!userData.initialPackBought) {
+          // Marcar compra inicial
+          await updateDoc(userRef, { initialPackBought: true });
+
+          // Bono único al patrocinador
+          if (sponsorId) {
+            const sponsorRef = doc(db, "usuarios", sponsorId);
+            const sponsorSnap = await getDoc(sponsorRef);
+
+            if (sponsorSnap.exists()) {
+              const sponsorData = sponsorSnap.data();
+
+              const bonusPoints = 15;
+              const bonusPesos = bonusPoints * 3800;
+
+              await updateDoc(sponsorRef, {
+                puntos: (sponsorData.puntos || 0) + bonusPoints,
+                bonusHistory: arrayUnion({
+                  type: "Bono inicial",
+                  points: bonusPoints,
+                  amount: bonusPesos,
+                  date: new Date().toISOString(),
+                  fromUser: userId
+                })
+              });
+            }
+          }
+        }
+      }
+
+      // --- Calcular puntos de equipo hasta 6 niveles ---
+      async function calculateTeamPoints(userId) {
+        let totalTeamPoints = 0;
+        let currentLevel = [userId];
+
+        for (let level = 1; level <= 6; level++) {
+          const nextLevel = [];
+          for (const uid of currentLevel) {
+            const q = query(collection(db, "usuarios"), where("sponsorId", "==", uid));
+            const snap = await getDocs(q);
+            snap.forEach((docSnap) => {
+              const d = docSnap.data();
+              totalTeamPoints += d.puntos || 0;
+              nextLevel.push(docSnap.id);
+            });
+          }
+          currentLevel = nextLevel;
+        }
+
+        const userRef = doc(db, "usuarios", userId);
+        await updateDoc(userRef, { teamPoints: totalTeamPoints });
+        document.getElementById("teamPoints").textContent = totalTeamPoints;
       }
 
     } catch (error) {
