@@ -1,4 +1,3 @@
-// confirm-order.js
 const admin = require('firebase-admin');
 
 if (!admin.apps.length) {
@@ -10,11 +9,9 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// Configuración multinivel
 const LEVEL_PERCENTS = [0.05, 0.03, 0.02, 0.01, 0.005];
 const POINT_VALUE = 3800;
 
-// 🔎 Buscar usuario por su "usuario" (username visible)
 async function findUserByUsername(username) {
   const snap = await db.collection('usuarios').where('usuario', '==', username).limit(1).get();
   if (snap.empty) return null;
@@ -22,7 +19,6 @@ async function findUserByUsername(username) {
   return { id: doc.id, data: doc.data() };
 }
 
-// 🔑 Extraer token de autorización
 const getAuthHeader = (event) => {
   const auth = event.headers && (event.headers.authorization || event.headers.Authorization);
   if (!auth) return null;
@@ -40,7 +36,6 @@ exports.handler = async (event) => {
     const decoded = await admin.auth().verifyIdToken(token);
     const adminUid = decoded.uid;
 
-    // ✅ Validar rol admin
     const adminDoc = await db.collection('usuarios').doc(adminUid).get();
     if (!adminDoc.exists || adminDoc.data().role !== 'admin') {
       return { statusCode: 403, body: JSON.stringify({ error: 'No autorizado' }) };
@@ -55,7 +50,6 @@ exports.handler = async (event) => {
     if (!orderSnap.exists) return { statusCode: 404, body: JSON.stringify({ error: 'Orden no encontrada' }) };
     const order = orderSnap.data();
 
-    // ❌ Rechazo de orden
     if (action === 'reject') {
       await orderRef.update({
         status: 'rejected',
@@ -65,7 +59,6 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: JSON.stringify({ message: 'Orden rechazada' }) };
     }
 
-    // ✅ Confirmación de orden
     if (action === 'confirm') {
       await orderRef.update({
         status: 'confirmed',
@@ -73,7 +66,6 @@ exports.handler = async (event) => {
         confirmedAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
-      // Datos del comprador
       const buyerUid = order.buyerUid;
       const buyerDoc = await db.collection('usuarios').doc(buyerUid).get();
       if (!buyerDoc.exists) return { statusCode: 404, body: JSON.stringify({ error: 'Comprador no encontrado' }) };
@@ -83,26 +75,26 @@ exports.handler = async (event) => {
       let sponsorCode = buyerData.patrocinador || null;
       const points = order.points || 0;
 
-      // 📌 Compra inicial especial (50 pts + bono al patrocinador)
-      if (points === 50 && order.isInitial) {
-        if (sponsorCode) {
-          const sponsor = await findUserByUsername(sponsorCode);
-          if (sponsor) {
-            const sponsorRef = db.collection('usuarios').doc(sponsor.id);
-            const bonusPoints = 15;
-            const bonusValue = bonusPoints * POINT_VALUE;
+      // 🎯 Compra inicial especial: bono solo una vez
+      if (points === 50 && order.isInitial && sponsorCode) {
+        const sponsor = await findUserByUsername(sponsorCode);
+        if (sponsor && !sponsor.data.initialBonusGiven) {
+          const sponsorRef = db.collection('usuarios').doc(sponsor.id);
+          const bonusPoints = 15;
+          const bonusValue = bonusPoints * POINT_VALUE;
 
-            await sponsorRef.update({
-              balance: admin.firestore.FieldValue.increment(bonusValue),
-              history: admin.firestore.FieldValue.arrayUnion({
-                action: `Bono inicial por compra de ${buyerUsername}`,
-                amount: bonusValue,
-                points: bonusPoints,
-                orderId,
-                date: new Date().toISOString()
-              })
-            });
-          }
+          await sponsorRef.update({
+            balance: admin.firestore.FieldValue.increment(bonusValue),
+            teamPoints: admin.firestore.FieldValue.increment(bonusPoints),
+            initialBonusGiven: true,
+            history: admin.firestore.FieldValue.arrayUnion({
+              action: `Bono inicial por compra de ${buyerUsername}`,
+              amount: bonusValue,
+              points: bonusPoints,
+              orderId,
+              date: new Date().toISOString()
+            })
+          });
         }
 
         await db.collection('usuarios').doc(buyerUid).update({
@@ -118,10 +110,9 @@ exports.handler = async (event) => {
         return { statusCode: 200, body: JSON.stringify({ message: 'Compra inicial confirmada con bono al patrocinador' }) };
       }
 
-      // 🟢 Compras normales: distribución multinivel 5 niveles
+      // 🟢 Compras normales: distribución multinivel
       for (let level = 0; level < 5; level++) {
         if (!sponsorCode) break;
-
         const sponsor = await findUserByUsername(sponsorCode);
         if (!sponsor) break;
 
