@@ -20,9 +20,9 @@
   </nav>
 
   <!-- Alerta de activación -->
-<div id="activationAlert" class="activation-alert" style="display:none;">
-  ⚠️ Debes realizar una compra mínima de 50 puntos para activar tu código y comenzar a recibir bonos y pagos.
-</div>
+  <div id="activationAlert" class="activation-alert" style="display:none;">
+    ⚠️ Debes realizar una compra mínima de 50 puntos para activar tu código y comenzar a recibir bonos y pagos.
+  </div>
   
   <!-- Contenido principal -->
   <div class="container">
@@ -65,8 +65,6 @@
           <small style="color:#666">Comparte este enlace para que el campo "Patrocinador" se autocomplete al registrar.</small>
         </div>
 
-        <button id="btnRecompra" class="btn">Realizar recompra</button>
-
         <!-- Productos -->
         <div class="history-section">
           <h2>Productos disponibles</h2>
@@ -90,7 +88,6 @@
               <label for="pageSize" style="font-size:13px;color:#444;margin-right:6px;">Frontales por página:</label>
               <select id="pageSize" style="padding:6px;border-radius:6px;border:1px solid #ddd;">
                 <option value="5" selected>5</option>
-        
               </select>
               <button id="btnRefreshMap" class="btn small">Actualizar mapa</button>
             </div>
@@ -111,6 +108,7 @@
   </div>
 
   <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script type="module" src="js/distribuidor-lite.js"></script>
   <script type="module" src="js/mlm-simulation.js"></script>
@@ -118,4 +116,3 @@
   <script type="module" src="js/productos.js"></script>
 </body>
 </html>
-
