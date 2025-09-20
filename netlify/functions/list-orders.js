@@ -1,8 +1,6 @@
-// list-orders.js
 const admin = require('firebase-admin');
 
 if (!admin.apps.length) {
-  // inicializa con variables de entorno: FIREBASE_ADMIN_SA (json base64)
   const saBase64 = process.env.FIREBASE_ADMIN_SA || '';
   if (!saBase64) throw new Error('FIREBASE_ADMIN_SA missing');
   const saJson = JSON.parse(Buffer.from(saBase64, 'base64').toString('utf8'));
@@ -25,27 +23,31 @@ exports.handler = async (event) => {
     const decoded = await admin.auth().verifyIdToken(token);
     const uid = decoded.uid;
 
-    // verificar que sea admin (role en usuarios)
     const userDoc = await db.collection('usuarios').doc(uid).get();
     if (!userDoc.exists || userDoc.data().role !== 'admin') {
       return { statusCode: 403, body: JSON.stringify({ error: 'No autorizado' }) };
     }
 
-    // traer órdenes pendientes
     const snap = await db.collection('orders')
       .where('status', 'in', ['pending_mp', 'pending_cash'])
       .get();
 
-    const orders = snap.docs.map(d => ({
-      id: d.id,
-      ...d.data()
-    }));
+    const orders = await Promise.all(
+      snap.docs.map(async d => {
+        const data = d.data();
+        const buyerDoc = await db.collection('usuarios').doc(data.buyerUid).get();
+        const buyerData = buyerDoc.exists ? buyerDoc.data() : {};
+        return {
+          id: d.id,
+          ...data,
+          buyerUsername: buyerData.usuario || data.buyerUid
+        };
+      })
+    );
 
-    // 🔑 Importante: devolver objeto con propiedad orders
     return { statusCode: 200, body: JSON.stringify({ orders }) };
   } catch (err) {
     console.error(err);
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 };
-
