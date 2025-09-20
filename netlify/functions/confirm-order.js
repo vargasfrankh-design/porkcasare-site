@@ -9,6 +9,7 @@ if (!admin.apps.length) {
 }
 const db = admin.firestore();
 
+// Porcentajes multinivel
 const LEVEL_PERCENTS = [0.05, 0.03, 0.02, 0.01, 0.005];
 const POINT_VALUE = 3800;
 
@@ -19,6 +20,7 @@ const getAuthHeader = (event) => {
   return parts.length === 2 ? parts[1] : parts[0];
 };
 
+// 🔎 Buscar usuario por campo "usuario" (username visible)
 async function findUserByUsername(username) {
   const snap = await db.collection('usuarios').where('usuario', '==', username).limit(1).get();
   if (snap.empty) return null;
@@ -35,7 +37,7 @@ exports.handler = async (event) => {
     const decoded = await admin.auth().verifyIdToken(token);
     const adminUid = decoded.uid;
 
-    // check admin role
+    // ✅ validar rol admin
     const adminDoc = await db.collection('usuarios').doc(adminUid).get();
     if (!adminDoc.exists || adminDoc.data().role !== 'admin') {
       return { statusCode: 403, body: JSON.stringify({ error: 'No autorizado' }) };
@@ -50,40 +52,56 @@ exports.handler = async (event) => {
     if (!orderSnap.exists) return { statusCode: 404, body: JSON.stringify({ error: 'Orden no encontrada' }) };
     const order = orderSnap.data();
 
+    // ❌ Rechazo
     if (action === 'reject') {
-      await orderRef.update({ status: 'rejected', admin: adminUid, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      await orderRef.update({
+        status: 'rejected',
+        admin: adminUid,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
       return { statusCode: 200, body: JSON.stringify({ message: 'Orden rechazada' }) };
     }
 
+    // ✅ Confirmación
     if (action === 'confirm') {
-      // marcar confirmada
-      await orderRef.update({ status: 'confirmed', admin: adminUid, confirmedAt: admin.firestore.FieldValue.serverTimestamp() });
+      await orderRef.update({
+        status: 'confirmed',
+        admin: adminUid,
+        confirmedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
 
-      // distribuir puntos 5 niveles hacia arriba
+      // comprador
       const buyerUid = order.buyerUid;
       const buyerDoc = await db.collection('usuarios').doc(buyerUid).get();
-      const buyerData = buyerDoc.exists ? buyerDoc.data() : null;
-      const buyerUsername = buyerData ? buyerData.usuario : null;
-      let sponsorCode = buyerData ? buyerData.patrocinador : null;
+      if (!buyerDoc.exists) return { statusCode: 404, body: JSON.stringify({ error: 'Comprador no encontrado' }) };
+
+      const buyerData = buyerDoc.data();
+      const buyerUsername = buyerData.usuario;
+      let sponsorCode = buyerData.patrocinador; // aquí está en string
       const points = order.points || 0;
 
+      // recorrer hacia arriba 5 niveles
       for (let level = 0; level < 5; level++) {
         if (!sponsorCode) break;
+
         const sponsor = await findUserByUsername(sponsorCode);
         if (!sponsor) break;
+
         const sponsorRef = db.collection('usuarios').doc(sponsor.id);
 
-        // sumar teamPoints
-        await sponsorRef.update({ teamPoints: admin.firestore.FieldValue.increment(points) });
+        // sumar puntos de equipo
+        await sponsorRef.update({
+          teamPoints: admin.firestore.FieldValue.increment(points)
+        });
 
-        // calcular comisión monetaria y actualizar balance + history
+        // calcular comisión
         const percent = LEVEL_PERCENTS[level] || 0;
         const commissionValue = Math.round(points * POINT_VALUE * percent);
 
         await sponsorRef.update({
           balance: admin.firestore.FieldValue.increment(commissionValue),
           history: admin.firestore.FieldValue.arrayUnion({
-            action: `Comisión nivel ${level + 1} por compra de ${buyerUsername || buyerUid}`,
+            action: `Comisión nivel ${level + 1} por compra de ${buyerUsername}`,
             amount: commissionValue,
             points,
             orderId,
@@ -91,11 +109,11 @@ exports.handler = async (event) => {
           })
         });
 
-        // next sponsor
+        // subir un nivel más
         sponsorCode = sponsor.data.patrocinador || null;
       }
 
-      // registrar en historial del comprador que la compra fue confirmada
+      // historial del comprador
       await db.collection('usuarios').doc(buyerUid).update({
         history: admin.firestore.FieldValue.arrayUnion({
           action: `Compra confirmada: ${order.productName}`,
@@ -110,7 +128,6 @@ exports.handler = async (event) => {
     }
 
     return { statusCode: 400, body: JSON.stringify({ error: 'Action no soportada' }) };
-
   } catch (err) {
     console.error(err);
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
