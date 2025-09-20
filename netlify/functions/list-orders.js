@@ -25,15 +25,22 @@ exports.handler = async (event) => {
     const decoded = await admin.auth().verifyIdToken(token);
     const uid = decoded.uid;
 
-    // check role in usuarios collection
+    // verificar que sea admin (role en usuarios)
     const userDoc = await db.collection('usuarios').doc(uid).get();
     if (!userDoc.exists || userDoc.data().role !== 'admin') {
       return { statusCode: 403, body: JSON.stringify({ error: 'No autorizado' }) };
     }
 
-    // fetch orders with status starting with 'pending' (or equal)
-    const snap = await db.collection('orders').where('status', 'in', ['pending_mp', 'pending_cash']).get();
-    const orders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // traer órdenes pendientes
+    const snap = await db.collection('orders')
+      .where('status', 'in', ['pending_mp', 'pending_cash'])
+      .get();
+
+    const orders = snap.docs.map(d => ({
+      id: d.id,
+      ...d.data()
+    }));
+
     return { statusCode: 200, body: JSON.stringify({ orders }) };
   } catch (err) {
     console.error(err);
