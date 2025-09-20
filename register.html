@@ -177,7 +177,7 @@
   <!-- Configuración Firebase -->
   <script type="module" src="./src/firebase-config.js"></script>
 
-  <!-- Lógica principal -->
+  <!-- Lógica principal (aquí debe estar tu main.js que valida y crea usuario) -->
   <script type="module" src="./main.js"></script>
 
   <!-- Bootstrap -->
@@ -186,61 +186,7 @@
   <!-- Ubicaciones dinámicas -->
   <script src="js/location.js"></script>
 
-  <!-- Validación personalizada con SweetAlert -->
-  <script>
-    document.getElementById("registerForm").addEventListener("submit", function(e) {
-      e.preventDefault();
-
-      const usuario = document.getElementById("usuario").value.trim();
-      const password = document.getElementById("password").value.trim();
-      const confirmPassword = document.getElementById("confirmPassword").value.trim();
-      const nombre = document.getElementById("nombre").value.trim();
-      const apellido = document.getElementById("apellido").value.trim();
-      const email = document.getElementById("email").value.trim();
-      const celular = document.getElementById("celular").value.trim();
-      const direccion = document.getElementById("direccion").value.trim();
-      const numeroDocumento = document.getElementById("numeroDocumento").value.trim();
-
-      if (!usuario || !password || !confirmPassword || !nombre || !apellido || !email || !celular || !direccion || !numeroDocumento) {
-        Swal.fire({
-          icon: "warning",
-          title: "Campos incompletos",
-          text: "Por favor completa todos los campos obligatorios."
-        });
-        return;
-      }
-
-      if (password !== confirmPassword) {
-        Swal.fire({
-          icon: "error",
-          title: "Contraseñas no coinciden",
-          text: "Debes asegurarte de que ambas contraseñas sean iguales."
-        });
-        return;
-      }
-
-      const regexNumeros = /^[0-9]+$/;
-      if (!regexNumeros.test(numeroDocumento) || !regexNumeros.test(celular)) {
-        Swal.fire({
-          icon: "error",
-          title: "Formato inválido",
-          text: "El documento y el celular deben contener solo números."
-        });
-        return;
-      }
-
-      Swal.fire({
-        icon: "success",
-        title: "Registro válido",
-        text: "Tu información ha sido validada correctamente.",
-        confirmButtonText: "Continuar"
-      }).then(() => {
-        this.submit();
-      });
-    });
-  </script>
-
-  <!-- Autocompletar patrocinador desde URL -->
+  <!-- AUTOCOMPLETAR patrocinador desde URL (lo mantenemos) -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const params = new URLSearchParams(window.location.search);
