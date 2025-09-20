@@ -142,7 +142,7 @@ function renderProductos() {
 async function onBuyClick(e) {
   if (!auth.currentUser) {
     alert("Debes iniciar sesión para comprar.");
-    window.location.href = "/distribuidor-login.html";
+    window.location.href = "distribuidor-login.html";
     return;
   }
 
@@ -190,7 +190,7 @@ async function onBuyClick(e) {
   } else {
     // Efectivo - redirigir a checkout local
     await updateDoc(orderRef, { status: "pending_cash" });
-    window.location.href = `/checkout.html?orderId=${orderRef.id}`;
+    window.location.href = `checkout.html?orderId=${orderRef.id}`;
   }
 
   // Demo: distribución inmediata
