@@ -21,7 +21,7 @@ const productos = [
   },
   {
     nombre: "Paticas o Pezuñitas – 3 kg",
-    descripcion: "Paticas o pezonitas de cerdo, perfectas para caldos, guisos o preparaciones tradicionales. Empacadas al vacío para garantizar su frescura y sabor auténtico.",
+    descripcion: "Paticas o pezuñitas de cerdo, perfectas para caldos, guisos o preparaciones tradicionales. Empacadas al vacío para garantizar su frescura y sabor auténtico.",
     imagen: "../images/productos/paticas.jpg",
     precio: 60000
   }
