@@ -75,7 +75,7 @@ exports.handler = async (event) => {
       let sponsorCode = buyerData.patrocinador || null;
       const points = order.points || 0;
 
-      // 🎯 Bono único para compra inicial
+      // 🎯 Bono único para compra inicial de 50 puntos
       if (points === 50 && order.isInitial && sponsorCode) {
         const sponsor = await findUserByUsername(sponsorCode);
         if (sponsor && !sponsor.data.initialBonusGiven) {
@@ -96,6 +96,17 @@ exports.handler = async (event) => {
             })
           });
         }
+
+        // Historial del comprador
+        await db.collection('usuarios').doc(buyerUid).update({
+          history: admin.firestore.FieldValue.arrayUnion({
+            action: `Compra inicial confirmada: ${order.productName}`,
+            amount: order.price,
+            points: order.points,
+            orderId,
+            date: new Date().toISOString()
+          })
+        });
       }
 
       // 🟢 Distribución multinivel normal
@@ -123,7 +134,7 @@ exports.handler = async (event) => {
         sponsorCode = sponsor.data.patrocinador || null;
       }
 
-      // Historial del comprador
+      // Historial general del comprador (para todas las compras)
       await db.collection('usuarios').doc(buyerUid).update({
         history: admin.firestore.FieldValue.arrayUnion({
           action: `Compra confirmada: ${order.productName}`,
