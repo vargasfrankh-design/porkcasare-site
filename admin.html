@@ -1,132 +1,176 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin - Órdenes PorkCasare</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <title>Panel de Administración - PorkCasare</title>
+  <link rel="stylesheet" href="/oficina-virtual/css/style.css">
   <style>
-    /* mínimo para la tabla */
-    .container { max-width:1100px; margin:24px auto; padding:16px; }
-    table { width:100%; border-collapse:collapse; margin-top:12px;}
-    th, td { padding:8px; border:1px solid #e6e6e6; text-align:left; }
-    .btn { padding:8px 10px; border-radius:6px; cursor:pointer; }
-    .btn.confirm { background:#28a745; color:#fff; }
-    .btn.reject { background:#f44336; color:#fff; }
+    body { font-family: Arial, sans-serif; padding: 20px; background: #fafafa; }
+    h1 { margin-bottom: 20px; }
+    .hidden { display: none; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 10px; border: 1px solid #ccc; text-align: left; }
+    th { background: #eee; }
+    button { padding: 5px 10px; margin: 2px; cursor: pointer; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Panel Admin — Órdenes pendientes</h1>
-    <p id="adminInfo">Cargando...</p>
-    <div id="ordersWrap">
-      <table id="ordersTable">
-        <thead>
-          <tr>
-            <th>OrderId</th>
-            <th>Usuario (buyerUid)</th>
-            <th>Producto</th>
-            <th>Precio</th>
-            <th>Puntos</th>
-            <th>Estado</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody id="ordersBody">
-        </tbody>
-      </table>
-    </div>
+  <h1>Panel de Administración</h1>
+
+  <!-- Formulario de login -->
+  <div id="loginSection">
+    <h2>Iniciar sesión</h2>
+    <form id="loginForm">
+      <label>Email:</label><br>
+      <input type="email" id="email" required><br><br>
+      <label>Contraseña:</label><br>
+      <input type="password" id="password" required><br><br>
+      <button type="submit">Ingresar</button>
+    </form>
   </div>
 
-  <script type="module" src="/src/firebase-config.js"></script>
+  <!-- Panel solo visible si es admin -->
+  <div id="adminPanel" class="hidden">
+    <h2>Órdenes pendientes</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Producto</th>
+          <th>Usuario</th>
+          <th>Precio</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="ordersTable"></tbody>
+    </table>
+    <button id="logoutBtn">Cerrar sesión</button>
+  </div>
+
   <script type="module">
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-    import { auth } from "/src/firebase-config.js"; // si exportas auth
-    import { getIdToken } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import { firebaseConfig } from "/src/firebase-config.js";
 
-    // Ejemplo simple para obtener token y llamar la función
-    const authInst = getAuth();
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-    onAuthStateChanged(authInst, async user => {
-      if (!user) {
-        document.getElementById('adminInfo').innerText = 'Debes iniciar sesión como admin.';
-        return;
+    const loginSection = document.getElementById("loginSection");
+    const adminPanel = document.getElementById("adminPanel");
+    const loginForm = document.getElementById("loginForm");
+    const ordersTable = document.getElementById("ordersTable");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    // 🔹 Login
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (err) {
+        alert("Error en login: " + err.message);
       }
-      // Preguntar en Firestore si role === 'admin' (o confiar en función)
-      document.getElementById('adminInfo').innerText = `Sesión: ${user.email} (uid: ${user.uid})`;
-      // cargar órdenes
-      await loadOrders();
     });
 
-    async function loadOrders() {
-      // llamamos una Netlify function que devuelve órdenes pendientes (server-side comprueba admin)
-      try {
-        const res = await fetch('/.netlify/functions/list-orders', { method: 'GET' });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Error cargando órdenes');
-        renderOrders(data.orders || []);
-      } catch (err) {
-        console.error(err);
-        document.getElementById('adminInfo').innerText = 'Error cargando órdenes: ' + err.message;
-      }
-    }
+    // 🔹 Logout
+    logoutBtn.addEventListener("click", async () => {
+      await signOut(auth);
+    });
 
-    function renderOrders(orders) {
-      const body = document.getElementById('ordersBody');
-      body.innerHTML = '';
-      orders.forEach(o => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${o.id}</td>
-          <td>${o.buyerUid}</td>
-          <td>${o.productName}</td>
-          <td>${o.price}</td>
-          <td>${o.points}</td>
-          <td>${o.status}</td>
+    // 🔹 Chequear estado del usuario
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Verificar rol admin en Firestore
+        const userDoc = await getDoc(doc(db, "usuarios", user.uid));
+        if (!userDoc.exists() || userDoc.data().role !== "admin") {
+          alert("Acceso denegado. No eres administrador.");
+          await signOut(auth);
+          return;
+        }
+
+        loginSection.classList.add("hidden");
+        adminPanel.classList.remove("hidden");
+
+        loadOrders(user);
+      } else {
+        loginSection.classList.remove("hidden");
+        adminPanel.classList.add("hidden");
+      }
+    });
+
+    // 🔹 Cargar órdenes desde Netlify Function
+    async function loadOrders(user) {
+      const token = await user.getIdToken();
+      const res = await fetch("/.netlify/functions/list-orders", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        alert("Error cargando órdenes: " + res.status);
+        return;
+      }
+      const orders = await res.json();
+
+      ordersTable.innerHTML = "";
+      orders.forEach(order => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${order.id}</td>
+          <td>${order.productName}</td>
+          <td>${order.buyerUsername || order.buyerUid}</td>
+          <td>$${order.price}</td>
+          <td>${order.status}</td>
           <td>
-            <button class="btn confirm" data-id="${o.id}">Confirmar</button>
-            <button class="btn reject" data-id="${o.id}">Rechazar</button>
+            <button onclick="confirmOrder('${order.id}')">Confirmar</button>
+            <button onclick="rejectOrder('${order.id}')">Rechazar</button>
           </td>
         `;
-        body.appendChild(tr);
-      });
-
-      // handlers
-      document.querySelectorAll('.btn.confirm').forEach(b => {
-        b.addEventListener('click', async (ev) => {
-          const id = ev.currentTarget.dataset.id;
-          await adminAction(id, 'confirm');
-        });
-      });
-      document.querySelectorAll('.btn.reject').forEach(b => {
-        b.addEventListener('click', async (ev) => {
-          const id = ev.currentTarget.dataset.id;
-          await adminAction(id, 'reject');
-        });
+        ordersTable.appendChild(row);
       });
     }
 
-    async function adminAction(orderId, action) {
-      try {
-        // pedir ID token del usuario actual
-        const user = (await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js')).getAuth().currentUser;
-        if (!user) { alert('No auth'); return; }
-        const token = await getIdToken(user, /* forceRefresh */ true);
-
-        const res = await fetch('/.netlify/functions/confirm-order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-          body: JSON.stringify({ orderId, action })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Error');
-        alert(data.message || 'OK');
-        await loadOrders(); // refrescar
-      } catch (err) {
-        console.error(err);
-        alert('Error: ' + err.message);
+    // 🔹 Confirmar / Rechazar orden
+    window.confirmOrder = async function(orderId) {
+      const user = auth.currentUser;
+      const token = await user.getIdToken();
+      const res = await fetch("/.netlify/functions/confirm-order", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ orderId })
+      });
+      if (!res.ok) {
+        alert("Error confirmando: " + res.status);
+        return;
       }
-    }
+      alert("Orden confirmada");
+      loadOrders(user);
+    };
+
+    window.rejectOrder = async function(orderId) {
+      const user = auth.currentUser;
+      const token = await user.getIdToken();
+      const res = await fetch("/.netlify/functions/reject-order", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ orderId })
+      });
+      if (!res.ok) {
+        alert("Error rechazando: " + res.status);
+        return;
+      }
+      alert("Orden rechazada");
+      loadOrders(user);
+    };
   </script>
 </body>
 </html>
