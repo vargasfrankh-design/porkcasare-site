@@ -78,41 +78,37 @@ exports.handler = async (event) => {
       // 🎯 Bono único para compra inicial de 50 puntos
       if (points === 50 && order.isInitial && sponsorCode) {
         const sponsor = await findUserByUsername(sponsorCode);
-        if (sponsor && !sponsor.data.initialBonusGiven) {
-          const sponsorRef = db.collection('usuarios').doc(sponsor.id);
-          const bonusPoints = 15; // 30% de 50
-          const bonusValue = bonusPoints * POINT_VALUE;
+        if (sponsor) {
+          // Inicializamos el campo si no existe
+          const initialBonusGiven = sponsor.data.initialBonusGiven || false;
 
-          await sponsorRef.update({
-            balance: admin.firestore.FieldValue.increment(bonusValue),
-            teamPoints: admin.firestore.FieldValue.increment(bonusPoints),
-            initialBonusGiven: true,
-            history: admin.firestore.FieldValue.arrayUnion({
-              action: `Bono inicial por compra de ${buyerUsername}`,
-              amount: bonusValue,
-              points: bonusPoints,
-              orderId,
-              date: new Date().toISOString()
-            })
-          });
+          if (!initialBonusGiven) {
+            const sponsorRef = db.collection('usuarios').doc(sponsor.id);
+            const bonusPoints = 15; // 30% de 50 puntos
+            const bonusValue = bonusPoints * POINT_VALUE;
+
+            // Guardamos el bono inicial en history
+            await sponsorRef.update({
+              balance: admin.firestore.FieldValue.increment(bonusValue),
+              teamPoints: admin.firestore.FieldValue.increment(bonusPoints),
+              initialBonusGiven: true,
+              history: admin.firestore.FieldValue.arrayUnion({
+                action: `Bono inicial por compra de ${buyerUsername}`,
+                amount: bonusValue,
+                points: bonusPoints,
+                orderId,
+                date: new Date().toISOString()
+              })
+            });
+          }
         }
-
-        // Historial del comprador
-        await db.collection('usuarios').doc(buyerUid).update({
-          history: admin.firestore.FieldValue.arrayUnion({
-            action: `Compra inicial confirmada: ${order.productName}`,
-            amount: order.price,
-            points: order.points,
-            orderId,
-            date: new Date().toISOString()
-          })
-        });
       }
 
-      // 🟢 Distribución multinivel normal
+      // 🟢 Distribución multinivel normal (siempre se ejecuta, incluso para compra inicial)
+      let currentSponsorCode = sponsorCode;
       for (let level = 0; level < LEVEL_PERCENTS.length; level++) {
-        if (!sponsorCode) break;
-        const sponsor = await findUserByUsername(sponsorCode);
+        if (!currentSponsorCode) break;
+        const sponsor = await findUserByUsername(currentSponsorCode);
         if (!sponsor) break;
 
         const sponsorRef = db.collection('usuarios').doc(sponsor.id);
@@ -131,10 +127,10 @@ exports.handler = async (event) => {
           })
         });
 
-        sponsorCode = sponsor.data.patrocinador || null;
+        currentSponsorCode = sponsor.data.patrocinador || null;
       }
 
-      // Historial general del comprador (para todas las compras)
+      // Historial del comprador
       await db.collection('usuarios').doc(buyerUid).update({
         history: admin.firestore.FieldValue.arrayUnion({
           action: `Compra confirmada: ${order.productName}`,
