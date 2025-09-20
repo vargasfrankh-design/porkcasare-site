@@ -8,6 +8,21 @@
       font-family: Arial, sans-serif;
       padding: 20px;
     }
+    #loginForm, #adminPanel {
+      max-width: 400px;
+      margin: auto;
+    }
+    input {
+      display: block;
+      width: 100%;
+      margin: 10px 0;
+      padding: 10px;
+    }
+    button {
+      padding: 10px 15px;
+      margin: 5px 0;
+      cursor: pointer;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -20,10 +35,11 @@
       padding: 10px;
       text-align: left;
     }
-    button {
-      margin-right: 5px;
-      padding: 5px 10px;
-      cursor: pointer;
+    #logoutBtn {
+      float: right;
+      background: #f44336;
+      color: white;
+      border: none;
     }
   </style>
 </head>
@@ -31,26 +47,39 @@
   <h1>Panel de Administración</h1>
   <p id="welcome"></p>
 
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Producto</th>
-        <th>Comprador</th>
-        <th>Precio</th>
-        <th>Estado</th>
-        <th>Acciones</th>
-      </tr>
-    </thead>
-    <tbody id="ordersTable"></tbody>
-  </table>
+  <!-- 🔹 Login -->
+  <div id="loginForm">
+    <h2>Iniciar Sesión</h2>
+    <input type="email" id="email" placeholder="Correo electrónico">
+    <input type="password" id="password" placeholder="Contraseña">
+    <button onclick="login()">Entrar</button>
+  </div>
+
+  <!-- 🔹 Panel de Admin -->
+  <div id="adminPanel" style="display:none;">
+    <button id="logoutBtn" onclick="logout()">Cerrar sesión</button>
+    <h2>Órdenes registradas</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Producto</th>
+          <th>Comprador</th>
+          <th>Precio</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="ordersTable"></tbody>
+    </table>
+  </div>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
   <script>
-    // 🔹 Configuración de Firebase
+    // 🔹 Configuración Firebase
     const firebaseConfig = {
       apiKey: "TU_API_KEY",
       authDomain: "TU_PROJECT.firebaseapp.com",
@@ -59,16 +88,39 @@
     firebase.initializeApp(firebaseConfig);
 
     const ordersTable = document.getElementById("ordersTable");
+    const loginForm = document.getElementById("loginForm");
+    const adminPanel = document.getElementById("adminPanel");
+    const welcome = document.getElementById("welcome");
 
-    // 🔹 Escucha de autenticación
+    // 🔹 Escucha de cambios de autenticación
     firebase.auth().onAuthStateChanged(async (user) => {
       if (user) {
-        document.getElementById("welcome").innerText = "Bienvenido, " + (user.email || user.uid);
+        loginForm.style.display = "none";
+        adminPanel.style.display = "block";
+        welcome.innerText = "Bienvenido, " + (user.email || user.uid);
         await loadOrders(user);
       } else {
-        document.getElementById("welcome").innerText = "No has iniciado sesión.";
+        loginForm.style.display = "block";
+        adminPanel.style.display = "none";
+        welcome.innerText = "No has iniciado sesión.";
       }
     });
+
+    // 🔹 Función Login
+    async function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      try {
+        await firebase.auth().signInWithEmailAndPassword(email, password);
+      } catch (error) {
+        alert("Error al iniciar sesión: " + error.message);
+      }
+    }
+
+    // 🔹 Logout
+    async function logout() {
+      await firebase.auth().signOut();
+    }
 
     // 🔹 Cargar órdenes desde Netlify Function
     async function loadOrders(user) {
@@ -82,8 +134,8 @@
         return;
       }
 
-      const data = await res.json();  // 👈 data = { orders: [...] }
-      const orders = data.orders || [];  // 👈 array real de órdenes
+      const data = await res.json();  // { orders: [...] }
+      const orders = data.orders || [];
 
       ordersTable.innerHTML = "";
       orders.forEach(order => {
