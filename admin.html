@@ -59,7 +59,7 @@
     const ordersTable = document.getElementById("ordersTable");
     const logoutBtn = document.getElementById("logoutBtn");
 
-    // 🔹 Login
+    // Login
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = document.getElementById("email").value;
@@ -72,15 +72,14 @@
       }
     });
 
-    // 🔹 Logout
+    // Logout
     logoutBtn.addEventListener("click", async () => {
       await signOut(auth);
     });
 
-    // 🔹 Chequear estado del usuario
+    // Chequear estado del usuario
     onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Verificar rol admin en Firestore
         const userDoc = await getDoc(doc(db, "usuarios", user.uid));
         if (!userDoc.exists() || userDoc.data().role !== "admin") {
           alert("Acceso denegado. No eres administrador.");
@@ -90,7 +89,6 @@
 
         loginSection.classList.add("hidden");
         adminPanel.classList.remove("hidden");
-
         loadOrders(user);
       } else {
         loginSection.classList.remove("hidden");
@@ -98,19 +96,20 @@
       }
     });
 
-    // 🔹 Cargar órdenes desde Netlify Function (adaptado con data.orders)
+    // Cargar órdenes
     async function loadOrders(user) {
       const token = await user.getIdToken();
       const res = await fetch("/.netlify/functions/list-orders", {
         headers: { Authorization: `Bearer ${token}` }
       });
+
       if (!res.ok) {
         alert("Error cargando órdenes: " + res.status);
         return;
       }
 
-      const data = await res.json();  // 👈 ahora la respuesta es { orders: [...] }
-      const orders = data.orders || [];  // 👈 extraemos el array
+      const data = await res.json();
+      const orders = data.orders || [];
 
       ordersTable.innerHTML = "";
       orders.forEach(order => {
@@ -130,7 +129,7 @@
       });
     }
 
-    // 🔹 Confirmar / Rechazar orden
+    // Confirmar / Rechazar
     window.confirmOrder = async function(orderId) {
       const user = auth.currentUser;
       const token = await user.getIdToken();
@@ -140,7 +139,7 @@
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ orderId })
+        body: JSON.stringify({ orderId, action: 'confirm' })
       });
       if (!res.ok) {
         alert("Error confirmando: " + res.status);
@@ -153,13 +152,13 @@
     window.rejectOrder = async function(orderId) {
       const user = auth.currentUser;
       const token = await user.getIdToken();
-      const res = await fetch("/.netlify/functions/reject-order", {
+      const res = await fetch("/.netlify/functions/confirm-order", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ orderId })
+        body: JSON.stringify({ orderId, action: 'reject' })
       });
       if (!res.ok) {
         alert("Error rechazando: " + res.status);
