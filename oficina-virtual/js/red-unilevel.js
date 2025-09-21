@@ -162,7 +162,7 @@ function renderTree(rootNode) {
     text.setAttribute("text-anchor", "middle");
     text.setAttribute("fill", "#fff");
     text.style.fontSize = "12px";
-    text.textContent = node.usuario.length > 12 ? node.usuario.slice(0,10) + "…" : node.usuario;
+    text.textContent = node.usuario.length > 12 ? node.usuario.slice(0, 10) + "…" : node.usuario;
     g.appendChild(text);
 
     g.addEventListener("click", () => showInfoCard(node));
@@ -172,18 +172,18 @@ function renderTree(rootNode) {
   updateStatsFromTree(rootNode);
 }
 
-function updateStatsFromTree(rootNode){
+function updateStatsFromTree(rootNode) {
   const statFrontales = document.getElementById("statFrontales");
   const statTotal = document.getElementById("statTotal");
   const statRecompra = document.getElementById("statRecompra");
 
-  let total=0, activos=0;
-  const q=[{node:rootNode, depth:0}];
-  while(q.length){
-    const {node, depth} = q.shift();
-    if(depth>0) total++;
-    if(depth>0 && node.active) activos++;
-    if(node.children?.length) node.children.forEach(c=>q.push({node:c, depth:depth+1}));
+  let total = 0, activos = 0;
+  const q = [{ node: rootNode, depth: 0 }];
+  while (q.length) {
+    const { node, depth } = q.shift();
+    if (depth > 0) total++;
+    if (depth > 0 && node.active) activos++;
+    if (node.children?.length) node.children.forEach(c => q.push({ node: c, depth: depth + 1 }));
   }
   statFrontales.textContent = rootNode.children?.length || 0;
   statTotal.textContent = total;
@@ -208,29 +208,29 @@ function createInfoCard() {
     `;
     document.body.appendChild(el);
   }
-  el.querySelector("#ic-close").addEventListener("click", ()=> el.style.display="none");
-  el.querySelector("#ic-search").addEventListener("click", async ()=>{
+  el.querySelector("#ic-close").addEventListener("click", () => el.style.display = "none");
+  el.querySelector("#ic-search").addEventListener("click", async () => {
     const userCode = el.dataset.usuario;
     if (!userCode) return;
     const tree = await buildUnilevelTree(userCode);
     renderTree(tree);
-    el.style.display="none";
+    el.style.display = "none";
   });
   return el;
 }
 const infoCard = createInfoCard();
-function showInfoCard(node){
+function showInfoCard(node) {
   const el = document.querySelector(".info-card");
   el.style.display = "block";
   el.dataset.usuario = node.usuario;
   el.querySelector("#ic-name").textContent = node.nombre || node.usuario;
-  el.querySelector("#ic-user").textContent = "Código: "+node.usuario;
-  el.querySelector("#ic-state").innerHTML = node.active?'<span style="color:#28a745">Activo</span>':'<span style="color:#666">Inactivo</span>';
+  el.querySelector("#ic-user").textContent = "Código: " + node.usuario;
+  el.querySelector("#ic-state").innerHTML = node.active ? '<span style="color:#28a745">Activo</span>' : '<span style="color:#666">Inactivo</span>';
   el.querySelector("#ic-points").textContent = node.puntos || 0;
 }
 
 // -------------------- REFRESH TREE & TEAM --------------------
-async function refreshTreeAndStats(rootCode, userId){
+async function refreshTreeAndStats(rootCode, userId) {
   const tree = await buildUnilevelTree(rootCode);
   renderTree(tree);
   const totalTeamPoints = await calculateTeamPoints(userId);
@@ -238,12 +238,15 @@ async function refreshTreeAndStats(rootCode, userId){
 }
 
 // -------------------- LOGIN STATE --------------------
-onAuthStateChanged(auth, async (user)=>{
-  if(!user){ window.location.href="/login.html"; return; }
-  const userRef = doc(db,"usuarios",user.uid);
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    window.location.href = "/login.html";
+    return;
+  }
+  const userRef = doc(db, "usuarios", user.uid);
   const userSnap = await getDoc(userRef);
   let rootCode = null;
-  if(userSnap.exists()){
+  if (userSnap.exists()) {
     const d = userSnap.data();
     rootCode = d[FIELD_USUARIO] || d.usuario;
     document.getElementById("name").textContent = d.nombre || "";
@@ -253,7 +256,22 @@ onAuthStateChanged(auth, async (user)=>{
     document.getElementById("refCode").value = `${window.location.origin}/registro?ref=${rootCode}`;
 
     const alertEl = document.getElementById("activationAlert");
-    if(alertEl){ alertEl.style.display = (d.puntos < 50 && !d.initialPackBought) ? "block" : "none"; }
+    if (alertEl) {
+      alertEl.style.display = (d.puntos < 50 && !d.initialPackBought) ? "block" : "none";
+    }
+
+    // --- NUEVO: Calcular puntos personales y emitir evento ---
+    const personalPoints = calculatePersonalPoints(d[FIELD_HISTORY] || []);
+    let el = document.getElementById("personalPointsValue");
+    if (!el) {
+      el = document.createElement("span");
+      el.id = "personalPointsValue";
+      el.style.display = "none";
+      document.body.appendChild(el);
+    }
+    el.textContent = personalPoints;
+    document.dispatchEvent(new CustomEvent("personalPointsReady", { detail: { personalPoints } }));
+    // ---------------------------------------------------------
 
     const totalTeamPoints = await calculateTeamPoints(user.uid);
     document.getElementById("teamPoints").textContent = totalTeamPoints;
@@ -262,17 +280,17 @@ onAuthStateChanged(auth, async (user)=>{
     renderTree(tree);
 
     // -------------------- BOTÓN REFRESH MAP --------------------
-    document.getElementById("btnRefreshMap")?.addEventListener("click", async ()=>{
+    document.getElementById("btnRefreshMap")?.addEventListener("click", async () => {
       await refreshTreeAndStats(rootCode, user.uid);
     });
 
     // -------------------- BOTÓN CONFIRMAR ORDEN --------------------
-    document.getElementById("btnConfirmOrder")?.addEventListener("click", async ()=>{
+    document.getElementById("btnConfirmOrder")?.addEventListener("click", async () => {
       const orderId = document.getElementById("orderIdInput").value;
-      if(!orderId) return alert("Debe seleccionar una orden");
+      if (!orderId) return alert("Debe seleccionar una orden");
       const token = await auth.currentUser.getIdToken();
 
-      try{
+      try {
         const resp = await fetch("/.netlify/functions/confirm-order", {
           method: "POST",
           headers: { "Authorization": "Bearer " + token },
@@ -281,7 +299,7 @@ onAuthStateChanged(auth, async (user)=>{
         const data = await resp.json();
         alert(data.message || "Orden confirmada");
         await refreshTreeAndStats(rootCode, user.uid);
-      }catch(e){
+      } catch (e) {
         console.error(e);
         alert("Error al confirmar la orden");
       }
@@ -292,20 +310,27 @@ onAuthStateChanged(auth, async (user)=>{
     const avatarGrid = document.querySelector(".avatar-grid");
     const changeAvatarBtn = document.getElementById("changeAvatarBtn");
     const savedAvatar = localStorage.getItem("selectedAvatar");
-    if(savedAvatar) { profileImg.src = savedAvatar; avatarGrid.style.display="none"; changeAvatarBtn.style.display="inline-block"; }
-    document.querySelectorAll(".avatar-grid img").forEach(img=>{
-      img.addEventListener("click", ()=>{
+    if (savedAvatar) {
+      profileImg.src = savedAvatar;
+      avatarGrid.style.display = "none";
+      changeAvatarBtn.style.display = "inline-block";
+    }
+    document.querySelectorAll(".avatar-grid img").forEach(img => {
+      img.addEventListener("click", () => {
         const selected = `../images/avatars/${img.dataset.avatar}`;
         profileImg.src = selected;
         localStorage.setItem("selectedAvatar", selected);
         avatarGrid.style.display = "none";
-        changeAvatarBtn.style.display="inline-block";
+        changeAvatarBtn.style.display = "inline-block";
       });
     });
-    changeAvatarBtn?.addEventListener("click", ()=>{ avatarGrid.style.display="grid"; changeAvatarBtn.style.display="none"; });
+    changeAvatarBtn?.addEventListener("click", () => {
+      avatarGrid.style.display = "grid";
+      changeAvatarBtn.style.display = "none";
+    });
 
     // -------------------- COPY REF --------------------
-    document.getElementById("copyRef")?.addEventListener("click", ()=>{
+    document.getElementById("copyRef")?.addEventListener("click", () => {
       const input = document.getElementById("refCode");
       input.select();
       document.execCommand('copy');
@@ -313,18 +338,24 @@ onAuthStateChanged(auth, async (user)=>{
     });
 
     // -------------------- LOGOUT --------------------
-    document.getElementById("logoutBtn")?.addEventListener("click", async ()=>{
-      try{ await signOut(auth); localStorage.removeItem("selectedAvatar"); window.location.href = "../index.html"; } catch(e){ console.error(e); }
+    document.getElementById("logoutBtn")?.addEventListener("click", async () => {
+      try {
+        await signOut(auth);
+        localStorage.removeItem("selectedAvatar");
+        window.location.href = "../index.html";
+      } catch (e) {
+        console.error(e);
+      }
     });
 
     // -------------------- DARK MODE --------------------
     const toggleDarkMode = document.getElementById("toggleDarkMode");
-    if(toggleDarkMode){
-      toggleDarkMode.addEventListener("click", ()=>{
+    if (toggleDarkMode) {
+      toggleDarkMode.addEventListener("click", () => {
         document.body.classList.toggle("dark");
-        localStorage.setItem('theme', document.body.classList.contains('dark')?'dark':'light');
+        localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
       });
-      if(localStorage.getItem('theme')==='dark') document.body.classList.add('dark');
+      if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
     }
   }
 });
