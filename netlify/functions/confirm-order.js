@@ -1,3 +1,4 @@
+// netlify/functions/confirm-order.js
 const admin = require('firebase-admin');
 
 if (!admin.apps.length) {
@@ -75,23 +76,18 @@ exports.handler = async (event) => {
       let sponsorCode = buyerData.patrocinador || null;
       const points = order.points || 0;
 
-      // 🎯 Bono único para compra inicial de 50 puntos
+      // 🎯 Bono de Inicio Rápido (por referido con paquete inicial)
       if (points === 50 && order.isInitial && sponsorCode) {
-        const sponsor = await findUserByUsername(sponsorCode);
-        if (sponsor) {
-          // Inicializamos el campo si no existe
-          const initialBonusGiven = sponsor.data.initialBonusGiven || false;
-
-          if (!initialBonusGiven) {
+        if (!order.initialBonusPaid) {
+          const sponsor = await findUserByUsername(sponsorCode);
+          if (sponsor) {
             const sponsorRef = db.collection('usuarios').doc(sponsor.id);
             const bonusPoints = 15; // 30% de 50 puntos
             const bonusValue = bonusPoints * POINT_VALUE;
 
-            // Guardamos el bono inicial en history
             await sponsorRef.update({
               balance: admin.firestore.FieldValue.increment(bonusValue),
               teamPoints: admin.firestore.FieldValue.increment(bonusPoints),
-              initialBonusGiven: true,
               history: admin.firestore.FieldValue.arrayUnion({
                 action: `Bono inicial por compra de ${buyerUsername}`,
                 amount: bonusValue,
@@ -100,11 +96,14 @@ exports.handler = async (event) => {
                 date: new Date().toISOString()
               })
             });
+
+            // marcar orden como bonificada
+            await orderRef.update({ initialBonusPaid: true });
           }
         }
       }
 
-      // 🟢 Distribución multinivel normal (siempre se ejecuta, incluso para compra inicial)
+      // 🟢 Distribución multinivel normal (hasta 5 niveles)
       let currentSponsorCode = sponsorCode;
       for (let level = 0; level < LEVEL_PERCENTS.length; level++) {
         if (!currentSponsorCode) break;
@@ -130,7 +129,7 @@ exports.handler = async (event) => {
         currentSponsorCode = sponsor.data.patrocinador || null;
       }
 
-      // Historial del comprador
+      // 📜 Historial del comprador
       await db.collection('usuarios').doc(buyerUid).update({
         history: admin.firestore.FieldValue.arrayUnion({
           action: `Compra confirmada: ${order.productName}`,
