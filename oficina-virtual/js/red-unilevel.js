@@ -1,11 +1,12 @@
 /**
  * oficina-virtual/js/red-unilevel.js
- * Versión final corregida y unificada.
+ * Archivo actualizado y unificado.
  *
- * - Busca hijos por patrocinadorId (doc.id).
+ * - Soporta documentos con `patrocinadorId` (doc.id) o `patrocinador` (username).
+ * - Normaliza lectura de puntos: `puntos || personalPoints || 0`.
  * - calculateTeamPoints() es solo lectura (no sobrescribe).
- * - persistTeamPointsSafely(): opción para persistir usando transacción.
- * - Incluye UI: renderTree, info card y onAuthStateChanged.
+ * - persistTeamPointsSafely(userId) opcional para guardar total con transacción.
+ * - UI: renderTree, info card, onAuthStateChanged y botones.
  */
 
 import { auth, db } from "/src/firebase-config.js";
@@ -23,7 +24,7 @@ import {
 const DEPTH_LIMIT = 6;
 const FIELD_USUARIO = "usuario";
 const FIELD_HISTORY = "history";
-const FIELD_PATROCINADOR_ID = "patrocinadorId"; // se espera que contenga doc.id del sponsor
+const FIELD_PATROCINADOR_ID = "patrocinadorId"; // se recomienda que contenga doc.id del sponsor
 
 /* -------------------- UTILIDADES -------------------- */
 
@@ -48,12 +49,36 @@ function clearElement(el) {
   while (el.firstChild) el.removeChild(el.firstChild);
 }
 
+/* -------------------- HELPERS PARA CONSULTAS FLEXIBLES -------------------- */
+
+// Utility: getChildrenForParent(node)
+// Tries multiple strategies to find children:
+// 1) patrocinadorId === parentDocId (preferred)
+// 2) patrocinador === parent username (fallback for older docs)
+async function getChildrenForParent(node) {
+  const usuariosCol = collection(db, "usuarios");
+  // 1) intentar por patrocinadorId === doc.id
+  let q = query(usuariosCol, where(FIELD_PATROCINADOR_ID, "==", node.id));
+  let snap = await getDocs(q);
+  if (!snap.empty) return snap.docs;
+
+  // 2) si no hay resultados, intentar por patrocinador === node.usuario (username/code)
+  if (node.usuario) {
+    q = query(usuariosCol, where("patrocinador", "==", node.usuario));
+    snap = await getDocs(q);
+    if (!snap.empty) return snap.docs;
+  }
+
+  // 3) No encontró nada
+  return [];
+}
+
 /* -------------------- CONSTRUCCIÓN DEL ÁRBOL -------------------- */
 
 /**
  * buildUnilevelTree(username)
  * - Busca el documento root por `usuario` (username).
- * - Construye recursivamente hasta DEPTH_LIMIT usando patrocinadorId === doc.id.
+ * - Construye recursivamente hasta DEPTH_LIMIT usando estrategias flexibles.
  */
 async function buildUnilevelTree(username) {
   const usuariosCol = collection(db, "usuarios");
@@ -68,29 +93,31 @@ async function buildUnilevelTree(username) {
     usuario: rootData[FIELD_USUARIO],
     nombre: rootData.nombre || rootData[FIELD_USUARIO],
     active: isActiveThisMonth(rootData),
-    puntos: Number(rootData.puntos || 0),
+    puntos: Number(rootData.puntos || rootData.personalPoints || 0),
     teamPoints: Number(rootData.teamPoints || 0),
     children: []
   };
 
   async function addChildrenById(node, level = 1) {
     if (level > DEPTH_LIMIT) return;
-    const qChildren = query(usuariosCol, where(FIELD_PATROCINADOR_ID, "==", node.id));
-    const snap = await getDocs(qChildren);
-    const children = snap.docs.map(d => {
+    const childDocs = await getChildrenForParent(node);
+    const children = childDocs.map(d => {
       const data = d.data();
       return {
         id: d.id,
-        usuario: data[FIELD_USUARIO],
-        nombre: data.nombre || data[FIELD_USUARIO],
+        usuario: data[FIELD_USUARIO] || data.usuario,
+        nombre: data.nombre || data[FIELD_USUARIO] || data.usuario,
         active: isActiveThisMonth(data),
-        puntos: Number(data.puntos || 0),
+        puntos: Number(data.puntos || data.personalPoints || 0),
         teamPoints: Number(data.teamPoints || 0),
         children: []
       };
     });
     node.children = children;
-    for (const child of children) await addChildrenById(child, level + 1);
+    // recursivamente agregar nietos
+    for (const child of children) {
+      await addChildrenById(child, level + 1);
+    }
   }
 
   await addChildrenById(rootNode, 1);
@@ -129,9 +156,35 @@ async function calculateTeamPoints(userId) {
 
     const q = query(usuariosCol, where(FIELD_PATROCINADOR_ID, "==", uid));
     const snap = await getDocs(q);
+
+    // si no hay hijos por patrocinadorId, intentar fallback por patrocinador == username
+    if (snap.empty) {
+      // buscamos usuarios cuyo campo 'patrocinador' sea igual al username del uid
+      // para esto debemos obtener el usuario con id uid y tomar su usuario (username)
+      try {
+        const parentSnap = await getDoc(doc(db, "usuarios", uid));
+        if (parentSnap.exists()) {
+          const parentData = parentSnap.data();
+          const username = parentData?.usuario;
+          if (username) {
+            const q2 = query(usuariosCol, where("patrocinador", "==", username));
+            const snap2 = await getDocs(q2);
+            snap2.forEach(ds => {
+              const data = ds.data();
+              totalTeamPoints += Number(data.puntos || data.personalPoints || 0);
+              queue.push(ds.id);
+            });
+            continue;
+          }
+        }
+      } catch (e) {
+        console.warn("Warning buscando fallback patrocinador por username:", e);
+      }
+    }
+
     snap.forEach(docSnap => {
       const d = docSnap.data();
-      totalTeamPoints += Number(d.puntos || 0);
+      totalTeamPoints += Number(d.puntos || d.personalPoints || 0);
       queue.push(docSnap.id);
     });
   }
@@ -281,7 +334,8 @@ function createInfoCard() {
       </div>
     `;
     document.body.appendChild(el);
-    el.querySelector("#ic-close").addEventListener("click", () => el.style.display = "none");
+    const closeBtn = el.querySelector("#ic-close");
+    if (closeBtn) closeBtn.addEventListener("click", () => el.style.display = "none");
   }
   return el;
 }
@@ -289,10 +343,14 @@ function createInfoCard() {
 function showInfoCard(node) {
   const el = createInfoCard();
   el.style.display = "block";
-  el.querySelector("#ic-name").textContent = node.nombre || node.usuario;
-  el.querySelector("#ic-user").textContent = `Código: ${node.usuario}`;
-  el.querySelector("#ic-state").innerHTML = node.active ? '<span style="color:#28a745">Activo</span>' : '<span style="color:#666">Inactivo</span>';
-  el.querySelector("#ic-points").textContent = `${node.puntos || 0} pts`;
+  const nameEl = el.querySelector("#ic-name");
+  const userEl = el.querySelector("#ic-user");
+  const stateEl = el.querySelector("#ic-state");
+  const pointsEl = el.querySelector("#ic-points");
+  if (nameEl) nameEl.textContent = node.nombre || node.usuario;
+  if (userEl) userEl.textContent = `Código: ${node.usuario}`;
+  if (stateEl) stateEl.innerHTML = node.active ? '<span style="color:#28a745">Activo</span>' : '<span style="color:#666">Inactivo</span>';
+  if (pointsEl) pointsEl.textContent = `${node.puntos || 0} pts`;
 }
 
 /* -------------------- REFRESH / UI / AUTH -------------------- */
@@ -321,16 +379,25 @@ onAuthStateChanged(auth, async (user) => {
     const d = userSnap.data();
     const rootCode = d[FIELD_USUARIO] || d.usuario || "";
 
-    // Datos básicos en UI
-    document.getElementById("name")?.textContent = d.nombre || "";
-    document.getElementById("email")?.textContent = d.email || user.email || "";
-    document.getElementById("code")?.textContent = rootCode;
-    document.getElementById("points")?.textContent = d.puntos || 0;
-    document.getElementById("refCode") && (document.getElementById("refCode").value = `${window.location.origin}/registro?ref=${rootCode}`);
+    // Datos básicos en UI (comprobaciones seguras)
+    const nameEl = document.getElementById("name");
+    if (nameEl) nameEl.textContent = d.nombre || "";
+
+    const emailEl = document.getElementById("email");
+    if (emailEl) emailEl.textContent = d.email || user.email || "";
+
+    const codeEl = document.getElementById("code");
+    if (codeEl) codeEl.textContent = rootCode;
+
+    const pointsEl = document.getElementById("points");
+    if (pointsEl) pointsEl.textContent = d.puntos || d.personalPoints || 0;
+
+    const refCodeEl = document.getElementById("refCode");
+    if (refCodeEl) refCodeEl.value = `${window.location.origin}/registro?ref=${rootCode}`;
 
     // Mostrar alerta de activación si aplica
     const alertEl = document.getElementById("activationAlert");
-    if (alertEl) alertEl.style.display = (Number(d.puntos || 0) < 50 && !d.initialPackBought) ? "block" : "none";
+    if (alertEl) alertEl.style.display = (Number(d.puntos || d.personalPoints || 0) < 50 && !d.initialPackBought) ? "block" : "none";
 
     // Puntos personales (evento)
     const personalPoints = calculatePersonalPoints(d[FIELD_HISTORY] || []);
@@ -355,31 +422,38 @@ onAuthStateChanged(auth, async (user) => {
     updateStatsFromTree(tree);
 
     // Botón refresh
-    document.getElementById("btnRefreshMap")?.addEventListener("click", async () => {
-      await refreshTreeAndStats(rootCode, user.uid);
-    });
-
-    // Confirmar orden -> llama función server (ya existente en tu proyecto)
-    document.getElementById("btnConfirmOrder")?.addEventListener("click", async () => {
-      const orderId = document.getElementById("orderIdInput")?.value;
-      if (!orderId) return alert("Debe seleccionar una orden");
-      try {
-        const token = await auth.currentUser.getIdToken();
-        const resp = await fetch("/.netlify/functions/confirm-order", {
-          method: "POST",
-          headers: { "Authorization": "Bearer " + token },
-          body: JSON.stringify({ orderId, action: "confirm" })
-        });
-        const data = await resp.json();
-        alert(data.message || "Orden confirmada");
+    const btnRefresh = document.getElementById("btnRefreshMap");
+    if (btnRefresh) {
+      btnRefresh.addEventListener("click", async () => {
         await refreshTreeAndStats(rootCode, user.uid);
-      } catch (err) {
-        console.error(err);
-        alert("Error al confirmar la orden");
-      }
-    });
+      });
+    }
 
-    // Avatar: usar comprobaciones para evitar null
+    // Confirmar orden -> llama función server
+    const btnConfirm = document.getElementById("btnConfirmOrder");
+    if (btnConfirm) {
+      btnConfirm.addEventListener("click", async () => {
+        const orderIdEl = document.getElementById("orderIdInput");
+        const orderId = orderIdEl ? orderIdEl.value : null;
+        if (!orderId) return alert("Debe seleccionar una orden");
+        try {
+          const token = await auth.currentUser.getIdToken();
+          const resp = await fetch("/.netlify/functions/confirm-order", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token },
+            body: JSON.stringify({ orderId, action: "confirm" })
+          });
+          const data = await resp.json();
+          alert(data.message || "Orden confirmada");
+          await refreshTreeAndStats(rootCode, user.uid);
+        } catch (err) {
+          console.error(err);
+          alert("Error al confirmar la orden");
+        }
+      });
+    }
+
+    // Avatar handling (safe checks)
     const profileImg = document.getElementById("profileImg");
     const avatarGrid = document.querySelector(".avatar-grid");
     const changeAvatarBtn = document.getElementById("changeAvatarBtn");
@@ -398,30 +472,38 @@ onAuthStateChanged(auth, async (user) => {
         if (changeAvatarBtn) changeAvatarBtn.style.display = "inline-block";
       });
     });
-    if (changeAvatarBtn) changeAvatarBtn.addEventListener("click", () => {
-      if (avatarGrid) avatarGrid.style.display = "grid";
-      if (changeAvatarBtn) changeAvatarBtn.style.display = "none";
-    });
+    if (changeAvatarBtn) {
+      changeAvatarBtn.addEventListener("click", () => {
+        if (avatarGrid) avatarGrid.style.display = "grid";
+        changeAvatarBtn.style.display = "none";
+      });
+    }
 
     // Copy ref
-    document.getElementById("copyRef")?.addEventListener("click", () => {
-      const input = document.getElementById("refCode");
-      if (!input) return;
-      input.select();
-      document.execCommand('copy');
-      alert("Enlace copiado");
-    });
+    const copyRefBtn = document.getElementById("copyRef");
+    if (copyRefBtn) {
+      copyRefBtn.addEventListener("click", () => {
+        const input = document.getElementById("refCode");
+        if (!input) return;
+        input.select();
+        document.execCommand('copy');
+        alert("Enlace copiado");
+      });
+    }
 
     // Logout
-    document.getElementById("logoutBtn")?.addEventListener("click", async () => {
-      try {
-        await signOut(auth);
-        localStorage.removeItem("selectedAvatar");
-        window.location.href = "../index.html";
-      } catch (e) {
-        console.error(e);
-      }
-    });
+    const logoutBtn = document.getElementById("logoutBtn");
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", async () => {
+        try {
+          await signOut(auth);
+          localStorage.removeItem("selectedAvatar");
+          window.location.href = "../index.html";
+        } catch (e) {
+          console.error(e);
+        }
+      });
+    }
 
     // Dark mode
     const toggleDarkMode = document.getElementById("toggleDarkMode");
