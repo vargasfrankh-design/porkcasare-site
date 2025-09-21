@@ -1,4 +1,3 @@
-// oficina-virtual/js/distribuidor-lite.js
 import { auth, db } from "/src/firebase-config.js";
 import {
   onAuthStateChanged,
@@ -34,7 +33,6 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("email").textContent = userData.email || "";
       document.getElementById("code").textContent = userData.usuario || "";
 
-      
       // Mostrar en pantalla (puntos grupales desde Firestore, sin recalcular)
       const teamPoints = Number(userData.teamPoints || 0);
       document.getElementById("teamPoints").textContent = teamPoints;
@@ -146,12 +144,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // --- Activación: alerta si puntos personales < 50 ---
-      const alertEl = document.getElementById("activationAlert");
-      if (alertEl) {
-        alertEl.style.display = personalPoints < 50 ? "block" : "none";
-      }
-
       // --- Modo oscuro preferencia ---
       const toggleDarkMode = document.getElementById("toggleDarkMode");
       if (toggleDarkMode) {
@@ -211,4 +203,13 @@ document.addEventListener("DOMContentLoaded", () => {
       alert("Error al cargar los datos. Intente más tarde.");
     }
   });
+});
+
+// --- Escuchar evento personalizado para mostrar alerta de activación ---
+document.addEventListener("personalPointsReady", (e) => {
+  const personalPoints = e.detail.personalPoints;
+  const alertEl = document.getElementById("activationAlert");
+  if (alertEl) {
+    alertEl.style.display = (personalPoints < 50) ? "block" : "none";
+  }
 });
