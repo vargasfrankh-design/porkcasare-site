@@ -37,8 +37,12 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("name").textContent = `${userData.nombre || ""} ${userData.apellido || ""}`;
       document.getElementById("email").textContent = userData.email || "";
       document.getElementById("code").textContent = userData.usuario || "";
-      document.getElementById("points").textContent = userData.puntos || 0;
-      document.getElementById("teamPoints").textContent = userData.teamPoints || 0;
+
+      // Mostrar puntos personales y grupales
+      const personalPoints = Number(userData.personalPoints || 0);
+      const teamPoints = Number(userData.teamPoints || 0);
+      document.getElementById("points").textContent = personalPoints;
+      document.getElementById("teamPoints").textContent = teamPoints;
 
       // --- Generar link de referido ---
       const refInput = document.getElementById("refCode");
@@ -147,11 +151,10 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // --- Activación: alerta si puntos < 50 ---
-      const userPoints = Number(userData.puntos || 0);
+      // --- Activación: alerta si puntos personales < 50 ---
       const alertEl = document.getElementById("activationAlert");
       if (alertEl) {
-        alertEl.style.display = userPoints < 50 ? "block" : "none";
+        alertEl.style.display = personalPoints < 50 ? "block" : "none";
       }
 
       // --- Modo oscuro preferencia ---
@@ -220,7 +223,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const snap = await getDocs(q);
             snap.forEach((docSnap) => {
               const d = docSnap.data();
-              totalTeamPoints += d.puntos || 0;
+              totalTeamPoints += d.personalPoints || 0;
               nextLevel.push(docSnap.id);
             });
           }
