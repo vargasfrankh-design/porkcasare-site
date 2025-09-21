@@ -379,7 +379,7 @@ onAuthStateChanged(auth, async (user) => {
       }
     });
 
-    // Avatar
+    // Avatar: usar comprobaciones para evitar null
     const profileImg = document.getElementById("profileImg");
     const avatarGrid = document.querySelector(".avatar-grid");
     const changeAvatarBtn = document.getElementById("changeAvatarBtn");
@@ -400,7 +400,7 @@ onAuthStateChanged(auth, async (user) => {
     });
     if (changeAvatarBtn) changeAvatarBtn.addEventListener("click", () => {
       if (avatarGrid) avatarGrid.style.display = "grid";
-      changeAvatarBtn.style.display = "none";
+      if (changeAvatarBtn) changeAvatarBtn.style.display = "none";
     });
 
     // Copy ref
