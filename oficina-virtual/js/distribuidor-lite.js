@@ -84,16 +84,16 @@ document.addEventListener("DOMContentLoaded", () => {
       const avatarImgs = document.querySelectorAll(".avatar-img");
 
       const avatarFromDB = userData.fotoURL;
-      if (avatarGrid && avatarImgs) {
+      if (avatarImgs) {
         avatarImgs.forEach(imgEl => {
           imgEl.addEventListener("click", async () => {
             const selectedAvatar = `images/avatars/${imgEl.dataset.avatar}`;
             try {
               await updateDoc(docRef, { fotoURL: selectedAvatar });
-              profileImg.src = `../${selectedAvatar}`;
+              if (profileImg) profileImg.src = `../${selectedAvatar}`;
               localStorage.setItem("selectedAvatar", selectedAvatar);
-              avatarGrid.style.display = "none";
-              changeAvatarBtn.style.display = "inline-block";
+              if (avatarGrid) avatarGrid.style.display = "none";
+              if (changeAvatarBtn) changeAvatarBtn.style.display = "inline-block";
               alert("✅ Avatar actualizado correctamente.");
             } catch (err) {
               console.error("❌ Error guardando avatar:", err);
@@ -105,13 +105,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (changeAvatarBtn) {
         if (avatarFromDB) {
-          avatarGrid.style.display = "none";
+          if (avatarGrid) avatarGrid.style.display = "none";
           changeAvatarBtn.style.display = "inline-block";
         } else {
           changeAvatarBtn.style.display = "none";
         }
         changeAvatarBtn.addEventListener("click", () => {
-          avatarGrid.style.display = "grid";
+          if (avatarGrid) avatarGrid.style.display = "grid";
           changeAvatarBtn.style.display = "none";
         });
       }
@@ -143,8 +143,6 @@ document.addEventListener("DOMContentLoaded", () => {
       // Ejemplo de asignación de bono inicial que usaba lectura y escritura no atómica:
       // Reemplazado por uso de increment() para evitar condiciones de carrera.
       // ----------------------------------------------
-      // Supongamos que en algún flujo queremos dar bonus al sponsor:
-      // (este fragmento se activa en ciertos eventos del UI; aquí se muestra de ejemplo)
       async function giveInitialBonusIfApplies(sponsorId, userId) {
         try {
           if (!sponsorId) return;
