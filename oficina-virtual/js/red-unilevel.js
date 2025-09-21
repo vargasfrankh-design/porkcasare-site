@@ -68,6 +68,17 @@ async function buildUnilevelTree(rootCode) {
   return rootNode;
 }
 
+// -------------------- PUNTOS PERSONALES --------------------
+function calculatePersonalPoints(history) {
+  let personalPoints = 0;
+  (history || []).forEach((entry) => {
+    if (entry.action && entry.action.startsWith("Compra confirmada")) {
+      personalPoints += Number(entry.points || 0);
+    }
+  });
+  return personalPoints;
+}
+
 // -------------------- PUNTOS DE EQUIPO --------------------
 async function calculateTeamPoints(userId) {
   let totalTeamPoints = 0;
