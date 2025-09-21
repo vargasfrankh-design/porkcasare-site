@@ -34,22 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("email").textContent = userData.email || "";
       document.getElementById("code").textContent = userData.usuario || "";
 
-      // --- Calcular puntos personales desde history ---
-      let personalPoints = 0;
-      (userData.history || []).forEach((entry) => {
-        if (entry.action && entry.action.startsWith("Compra confirmada")) {
-          personalPoints += Number(entry.points || 0);
-        }
-      });
-
-      // Actualizar en Firestore si cambió
-      if (personalPoints !== Number(userData.personalPoints || 0)) {
-        await updateDoc(docRef, { personalPoints });
-      }
-
-      // Mostrar en pantalla (puntos personales)
-      document.getElementById("points").textContent = personalPoints;
-
+      
       // Mostrar en pantalla (puntos grupales desde Firestore, sin recalcular)
       const teamPoints = Number(userData.teamPoints || 0);
       document.getElementById("teamPoints").textContent = teamPoints;
