@@ -8,10 +8,6 @@ import {
   doc,
   getDoc,
   updateDoc,
-  collection,
-  query,
-  where,
-  getDocs,
   arrayUnion
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
@@ -51,10 +47,10 @@ document.addEventListener("DOMContentLoaded", () => {
         await updateDoc(docRef, { personalPoints });
       }
 
-      // Mostrar en pantalla
+      // Mostrar en pantalla (puntos personales)
       document.getElementById("points").textContent = personalPoints;
 
-      // Mostrar puntos grupales (se recalculan luego)
+      // Mostrar en pantalla (puntos grupales desde Firestore, sin recalcular)
       const teamPoints = Number(userData.teamPoints || 0);
       document.getElementById("teamPoints").textContent = teamPoints;
 
@@ -224,43 +220,6 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         }
       }
-
-      // --- Calcular puntos de equipo hasta 6 niveles ---
-      async function calculateTeamPoints(userId) {
-        let totalTeamPoints = 0;
-        let currentLevel = [];
-
-        // arranca desde los directos (nivel 1)
-        const q = query(collection(db, "usuarios"), where("sponsorId", "==", userId));
-        const snap = await getDocs(q);
-        snap.forEach((docSnap) => {
-          const d = docSnap.data();
-          totalTeamPoints += d.personalPoints || 0;
-          currentLevel.push(docSnap.id);
-        });
-
-        // recorre niveles 2 a 6
-        for (let level = 2; level <= 6; level++) {
-          const nextLevel = [];
-          for (const uid of currentLevel) {
-            const q = query(collection(db, "usuarios"), where("sponsorId", "==", uid));
-            const snap = await getDocs(q);
-            snap.forEach((docSnap) => {
-              const d = docSnap.data();
-              totalTeamPoints += d.personalPoints || 0;
-              nextLevel.push(docSnap.id);
-            });
-          }
-          currentLevel = nextLevel;
-        }
-
-        const userRef = doc(db, "usuarios", userId);
-        await updateDoc(userRef, { teamPoints: totalTeamPoints });
-        document.getElementById("teamPoints").textContent = totalTeamPoints;
-      }
-
-      // 🔥 Ejecutar cálculo de puntos grupales al cargar
-      await calculateTeamPoints(user.uid);
 
     } catch (error) {
       console.error("🔥 Error al obtener datos del usuario:", error);
