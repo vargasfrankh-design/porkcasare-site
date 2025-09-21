@@ -33,25 +33,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const userData = docSnap.data();
 
-      // --- Calcular puntos personales desde el historial ---
-      let personalPoints = 0;
-      if (userData.history && Array.isArray(userData.history)) {
-        personalPoints = userData.history.reduce((sum, entry) => {
-          return sum + (Number(entry.points) || 0);
-        }, 0);
-      }
-
-      // Guardar puntos personales en Firestore si cambiaron
-      if ((userData.personalPoints || 0) !== personalPoints) {
-        await updateDoc(docRef, { personalPoints });
-      }
-
-      const teamPoints = Number(userData.teamPoints || 0);
-
       // --- Datos del usuario ---
       document.getElementById("name").textContent = `${userData.nombre || ""} ${userData.apellido || ""}`;
       document.getElementById("email").textContent = userData.email || "";
       document.getElementById("code").textContent = userData.usuario || "";
+
+      // Mostrar puntos personales y grupales
+      const personalPoints = Number(userData.personalPoints || 0);
+      const teamPoints = Number(userData.teamPoints || 0);
       document.getElementById("points").textContent = personalPoints;
       document.getElementById("teamPoints").textContent = teamPoints;
 
@@ -165,7 +154,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // --- Activación: alerta si puntos personales < 50 ---
       const alertEl = document.getElementById("activationAlert");
       if (alertEl) {
-        alertEl.style.display = personalPoints >= 50 ? "none" : "block";
+        alertEl.style.display = personalPoints < 50 ? "block" : "none";
       }
 
       // --- Modo oscuro preferencia ---
@@ -183,7 +172,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
-      // --- Procesar bono inicial ---
+      // --- Procesar bono inicial (v9) ---
       async function processInitialPack(userId, sponsorId) {
         const userRef = doc(db, "usuarios", userId);
         const userSnap = await getDoc(userRef);
@@ -193,8 +182,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const userData = userSnap.data();
 
         if (!userData.initialPackBought) {
+          // Marcar compra inicial
           await updateDoc(userRef, { initialPackBought: true });
 
+          // Bono único al patrocinador
           if (sponsorId) {
             const sponsorRef = doc(db, "usuarios", sponsorId);
             const sponsorSnap = await getDoc(sponsorRef);
@@ -223,9 +214,19 @@ document.addEventListener("DOMContentLoaded", () => {
       // --- Calcular puntos de equipo hasta 6 niveles ---
       async function calculateTeamPoints(userId) {
         let totalTeamPoints = 0;
-        let currentLevel = [userId];
+        let currentLevel = [];
 
-        for (let level = 1; level <= 6; level++) {
+        // arranca desde los directos (nivel 1)
+        const q = query(collection(db, "usuarios"), where("sponsorId", "==", userId));
+        const snap = await getDocs(q);
+        snap.forEach((docSnap) => {
+          const d = docSnap.data();
+          totalTeamPoints += d.personalPoints || 0;
+          currentLevel.push(docSnap.id);
+        });
+
+        // recorre niveles 2 a 6
+        for (let level = 2; level <= 6; level++) {
           const nextLevel = [];
           for (const uid of currentLevel) {
             const q = query(collection(db, "usuarios"), where("sponsorId", "==", uid));
@@ -243,6 +244,9 @@ document.addEventListener("DOMContentLoaded", () => {
         await updateDoc(userRef, { teamPoints: totalTeamPoints });
         document.getElementById("teamPoints").textContent = totalTeamPoints;
       }
+
+      // 🔥 Ejecutar cálculo de puntos grupales al cargar
+      await calculateTeamPoints(user.uid);
 
     } catch (error) {
       console.error("🔥 Error al obtener datos del usuario:", error);
