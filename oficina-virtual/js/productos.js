@@ -14,18 +14,9 @@ import {
   increment
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-/*
-  Reglas:
-  - Paquete Inicial (15 kg) => 300000 => 50 puntos
-  - Otros productos 3kg => 60000 => 10 puntos
-  - POINT_VALUE = 3800 COP
-  - Distribución comisiones: [5%, 3%, 2%, 1%, 0.5%] hacia arriba
-*/
-
 const POINT_VALUE = 3800;
 const LEVEL_PERCENTS = [0.05, 0.03, 0.02, 0.01, 0.005];
 
-// Catálogo de productos
 const productos = [
   {
     id: "paquete-inicio",
@@ -61,7 +52,6 @@ const productos = [
   }
 ];
 
-// Formatear precio COP
 function formatCOP(num) {
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
@@ -70,7 +60,6 @@ function formatCOP(num) {
   }).format(num);
 }
 
-// Buscar usuario por username
 async function findUserByUsername(username) {
   if (!username) return null;
   const usuariosCol = collection(db, "usuarios");
@@ -81,7 +70,6 @@ async function findUserByUsername(username) {
   return { id: docSnap.id, data: docSnap.data() };
 }
 
-// Distribuir puntos y comisiones hacia arriba
 async function distributePointsUpline(startSponsorCode, pointsEarned, buyerUsername, orderId) {
   try {
     let sponsorCode = startSponsorCode;
@@ -92,10 +80,8 @@ async function distributePointsUpline(startSponsorCode, pointsEarned, buyerUsern
 
       const sponsorRef = doc(db, "usuarios", sponsor.id);
 
-      // Puntos de equipo
       await updateDoc(sponsorRef, { teamPoints: increment(pointsEarned) });
 
-      // Comisión monetaria
       const percent = LEVEL_PERCENTS[level];
       const commissionValue = Math.round(pointsEarned * POINT_VALUE * percent);
 
@@ -117,7 +103,6 @@ async function distributePointsUpline(startSponsorCode, pointsEarned, buyerUsern
   }
 }
 
-// Render de productos
 function renderProductos() {
   const grid = document.getElementById("productGrid");
   if (!grid) return;
@@ -137,7 +122,6 @@ function renderProductos() {
   });
 }
 
-// Handler de compra
 async function onBuyClick(e) {
   if (!auth.currentUser) {
     alert("Debes iniciar sesión para comprar.");
@@ -151,7 +135,7 @@ async function onBuyClick(e) {
 
   const buyerUid = auth.currentUser.uid;
 
-  // Crear orden
+  // 👉 Crear orden en Firestore
   const orderRef = await addDoc(collection(db, "orders"), {
     productId: prod.id,
     productName: prod.nombre,
@@ -159,10 +143,11 @@ async function onBuyClick(e) {
     points: prod.puntos,
     buyerUid,
     status: "pending",
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    isInitial: prod.id === "paquete-inicio",   // 👈 agregado
+    initialBonusPaid: false                   // 👈 agregado
   });
 
-  // Método de pago
   const wantMP = confirm(`¿Cómo deseas pagar?\n\nAceptar = Transferencia/MercadoPago\nCancelar = Efectivo`);
   
   if (wantMP) {
@@ -222,10 +207,8 @@ async function onBuyClick(e) {
     }
   }
 
-  // Distribución normal
   await distributePointsUpline(sponsorCode, prod.puntos, buyerData?.usuario || "desconocido", orderRef.id);
 
-  // Historial comprador
   await updateDoc(doc(db, "usuarios", buyerUid), {
     history: arrayUnion({
       action: `Compra ${prod.nombre}`,
