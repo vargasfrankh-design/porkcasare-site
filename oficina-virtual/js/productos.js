@@ -137,7 +137,7 @@ function renderProductos() {
   });
 }
 
-// Handler de compra (único y definitivo)
+// Handler de compra
 async function onBuyClick(e) {
   if (!auth.currentUser) {
     alert("Debes iniciar sesión para comprar.");
