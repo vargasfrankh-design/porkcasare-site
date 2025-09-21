@@ -38,10 +38,24 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("email").textContent = userData.email || "";
       document.getElementById("code").textContent = userData.usuario || "";
 
-      // Mostrar puntos personales y grupales
-      const personalPoints = Number(userData.personalPoints || 0);
-      const teamPoints = Number(userData.teamPoints || 0);
+      // --- Calcular puntos personales desde history ---
+      let personalPoints = 0;
+      (userData.history || []).forEach((entry) => {
+        if (entry.action && entry.action.startsWith("Compra confirmada")) {
+          personalPoints += Number(entry.points || 0);
+        }
+      });
+
+      // Actualizar en Firestore si cambió
+      if (personalPoints !== Number(userData.personalPoints || 0)) {
+        await updateDoc(docRef, { personalPoints });
+      }
+
+      // Mostrar en pantalla
       document.getElementById("points").textContent = personalPoints;
+
+      // Mostrar puntos grupales (se recalculan luego)
+      const teamPoints = Number(userData.teamPoints || 0);
       document.getElementById("teamPoints").textContent = teamPoints;
 
       // --- Generar link de referido ---
