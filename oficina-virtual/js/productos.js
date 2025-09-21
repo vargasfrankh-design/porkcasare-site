@@ -110,7 +110,6 @@ async function distributePointsUpline(startSponsorCode, pointsEarned, buyerUsern
         })
       });
 
-      // Siguiente nivel
       sponsorCode = sponsor.data.patrocinador || null;
     }
   } catch (err) {
@@ -138,7 +137,7 @@ function renderProductos() {
   });
 }
 
-// Handler de compra
+// Handler de compra (único y definitivo)
 async function onBuyClick(e) {
   if (!auth.currentUser) {
     alert("Debes iniciar sesión para comprar.");
@@ -163,11 +162,10 @@ async function onBuyClick(e) {
     createdAt: new Date().toISOString()
   });
 
-  // Preguntar método de pago
+  // Método de pago
   const wantMP = confirm(`¿Cómo deseas pagar?\n\nAceptar = Transferencia/MercadoPago\nCancelar = Efectivo`);
   
   if (wantMP) {
-    // Transferencia - redirigir a MercadoPago
     const res = await fetch("/.netlify/functions/create-preference", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -188,18 +186,46 @@ async function onBuyClick(e) {
     if (data.init_point) window.location.href = data.init_point;
     else if (data.sandbox_init_point) window.location.href = data.sandbox_init_point;
   } else {
-    // Efectivo - redirigir a checkout local
     await updateDoc(orderRef, { status: "pending_cash" });
     window.location.href = `checkout.html?orderId=${orderRef.id}`;
   }
 
-  // Demo: distribución inmediata
   const buyerDoc = await getDoc(doc(db, "usuarios", buyerUid));
   const buyerData = buyerDoc.exists() ? buyerDoc.data() : null;
   const sponsorCode = buyerData ? buyerData.patrocinador : null;
 
+  // Bono rápido (solo paquete inicial)
+  if (prod.id === "paquete-inicio" && sponsorCode) {
+    try {
+      const sponsor = await findUserByUsername(sponsorCode);
+      if (sponsor) {
+        const sponsorRef = doc(db, "usuarios", sponsor.id);
+
+        const fastStartPoints = Math.round(prod.puntos * 0.30);
+        const fastStartValue = fastStartPoints * POINT_VALUE;
+
+        await updateDoc(sponsorRef, {
+          balance: increment(fastStartValue),
+          history: arrayUnion({
+            action: `Bono de inicio rápido por compra de ${buyerData?.usuario || "desconocido"}`,
+            amount: fastStartValue,
+            points: fastStartPoints,
+            orderId: orderRef.id,
+            date: new Date().toISOString()
+          })
+        });
+
+        console.log(`✅ Bono de inicio rápido asignado: ${fastStartValue} COP (${fastStartPoints} pts)`);
+      }
+    } catch (err) {
+      console.error("❌ Error asignando bono de inicio rápido:", err);
+    }
+  }
+
+  // Distribución normal
   await distributePointsUpline(sponsorCode, prod.puntos, buyerData?.usuario || "desconocido", orderRef.id);
 
+  // Historial comprador
   await updateDoc(doc(db, "usuarios", buyerUid), {
     history: arrayUnion({
       action: `Compra ${prod.nombre}`,
@@ -210,10 +236,9 @@ async function onBuyClick(e) {
     })
   });
 
-  console.log("Compra registrada y puntos distribuidos (demo).");
+  console.log("Compra registrada, bono rápido (si aplica) y puntos distribuidos.");
 }
 
-// Iniciar render
 document.addEventListener("DOMContentLoaded", () => {
   renderProductos();
 });
