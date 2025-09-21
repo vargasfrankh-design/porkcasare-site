@@ -33,14 +33,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const userData = docSnap.data();
 
+      // --- Calcular puntos personales desde el historial ---
+      let personalPoints = 0;
+      if (userData.history && Array.isArray(userData.history)) {
+        personalPoints = userData.history.reduce((sum, entry) => {
+          return sum + (Number(entry.points) || 0);
+        }, 0);
+      }
+
+      // Guardar puntos personales en Firestore si cambiaron
+      if ((userData.personalPoints || 0) !== personalPoints) {
+        await updateDoc(docRef, { personalPoints });
+      }
+
+      const teamPoints = Number(userData.teamPoints || 0);
+
       // --- Datos del usuario ---
       document.getElementById("name").textContent = `${userData.nombre || ""} ${userData.apellido || ""}`;
       document.getElementById("email").textContent = userData.email || "";
       document.getElementById("code").textContent = userData.usuario || "";
-
-      // Mostrar puntos personales y grupales
-      const personalPoints = Number(userData.personalPoints || 0);
-      const teamPoints = Number(userData.teamPoints || 0);
       document.getElementById("points").textContent = personalPoints;
       document.getElementById("teamPoints").textContent = teamPoints;
 
@@ -154,7 +165,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // --- Activación: alerta si puntos personales < 50 ---
       const alertEl = document.getElementById("activationAlert");
       if (alertEl) {
-        alertEl.style.display = personalPoints < 50 ? "block" : "none";
+        alertEl.style.display = personalPoints >= 50 ? "none" : "block";
       }
 
       // --- Modo oscuro preferencia ---
@@ -172,7 +183,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
-      // --- Procesar bono inicial (v9) ---
+      // --- Procesar bono inicial ---
       async function processInitialPack(userId, sponsorId) {
         const userRef = doc(db, "usuarios", userId);
         const userSnap = await getDoc(userRef);
@@ -182,10 +193,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const userData = userSnap.data();
 
         if (!userData.initialPackBought) {
-          // Marcar compra inicial
           await updateDoc(userRef, { initialPackBought: true });
 
-          // Bono único al patrocinador
           if (sponsorId) {
             const sponsorRef = doc(db, "usuarios", sponsorId);
             const sponsorSnap = await getDoc(sponsorRef);
