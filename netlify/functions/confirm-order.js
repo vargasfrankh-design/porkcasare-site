@@ -61,28 +61,80 @@ exports.handler = async (event) => {
     }
 
     if (action === 'confirm') {
-      await orderRef.update({
-        status: 'confirmed',
-        admin: adminUid,
-        confirmedAt: admin.firestore.FieldValue.serverTimestamp()
+      // Identificar buyerUid
+      const buyerUid = order.buyerUid;
+      if (!buyerUid) return { statusCode: 400, body: JSON.stringify({ error: 'Orden sin buyerUid' }) };
+
+      const points = Number(order.points || 0);
+
+      // 1) Transacción crítica: marcar orden y actualizar buyer (personalPoints + puntos + history)
+      await db.runTransaction(async (tx) => {
+        const ordSnap = await tx.get(orderRef);
+        if (!ordSnap.exists) throw new Error('Orden desapareció durante la transacción');
+
+        const buyerRef = db.collection('usuarios').doc(buyerUid);
+        const buyerSnap = await tx.get(buyerRef);
+        if (!buyerSnap.exists) throw new Error('Comprador no encontrado en la transacción');
+
+        // marcar orden confirmada
+        tx.update(orderRef, {
+          status: 'confirmed',
+          admin: adminUid,
+          confirmedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        // incrementar personalPoints y puntos (compatibilidad) y añadir history
+        tx.update(buyerRef, {
+          personalPoints: admin.firestore.FieldValue.increment(points),
+          puntos: admin.firestore.FieldValue.increment(points),
+          history: admin.firestore.FieldValue.arrayUnion({
+            action: `Compra confirmada: ${order.productName || order.product || ''}`,
+            amount: order.price || order.amount || null,
+            points: points,
+            orderId,
+            date: new Date().toISOString(),
+            by: 'admin'
+          })
+        });
+
+        // si alcanza >= 50, marcar initialPackBought
+        const currentPersonal = Number(buyerSnap.data().personalPoints || buyerSnap.data().puntos || 0);
+        const newPersonal = currentPersonal + points;
+        if (newPersonal >= 50 && !(buyerSnap.data() && buyerSnap.data().initialPackBought)) {
+          tx.update(buyerRef, { initialPackBought: true });
+        }
       });
 
-      const buyerUid = order.buyerUid;
-      const buyerDoc = await db.collection('usuarios').doc(buyerUid).get();
-      if (!buyerDoc.exists) return { statusCode: 404, body: JSON.stringify({ error: 'Comprador no encontrado' }) };
+      // 2) Registrar confirmación en colección 'confirmations' para auditoría
+      try {
+        await db.collection('confirmations').add({
+          orderId,
+          userId: buyerUid,
+          points,
+          amount: order.price || order.amount || null,
+          confirmedBy: adminUid,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          meta: {
+            productName: order.productName || order.product || null,
+            itemsCount: Array.isArray(order.items) ? order.items.length : null
+          }
+        });
+      } catch (e) {
+        console.warn('Warning: no se pudo crear confirmation doc', e);
+      }
 
-      const buyerData = buyerDoc.data();
-      const buyerUsername = buyerData.usuario;
-      let sponsorCode = buyerData.patrocinador || null;
-      const points = order.points || 0;
+      // 3) Bono inicial (fuera de la transacción): si aplica
+      try {
+        const buyerDoc = await db.collection('usuarios').doc(buyerUid).get();
+        const buyerData = buyerDoc.exists ? buyerDoc.data() : null;
+        const buyerUsername = buyerData?.usuario;
+        let sponsorCode = buyerData?.patrocinador || null;
 
-      // 🎯 Bono de Inicio Rápido (por referido con paquete inicial)
-      if (points === 50 && order.isInitial && sponsorCode) {
-        if (!order.initialBonusPaid) {
+        if (points === 50 && order.isInitial && sponsorCode && !order.initialBonusPaid) {
           const sponsor = await findUserByUsername(sponsorCode);
           if (sponsor) {
             const sponsorRef = db.collection('usuarios').doc(sponsor.id);
-            const bonusPoints = 15; // 30% de 50 puntos
+            const bonusPoints = 15;
             const bonusValue = bonusPoints * POINT_VALUE;
 
             await sponsorRef.update({
@@ -101,44 +153,46 @@ exports.handler = async (event) => {
             await orderRef.update({ initialBonusPaid: true });
           }
         }
+      } catch (e) {
+        console.warn('Error procesando bono inicial (no crítico):', e);
       }
 
-      // 🟢 Distribución multinivel normal (hasta 5 niveles)
-      let currentSponsorCode = sponsorCode;
-      for (let level = 0; level < LEVEL_PERCENTS.length; level++) {
-        if (!currentSponsorCode) break;
-        const sponsor = await findUserByUsername(currentSponsorCode);
-        if (!sponsor) break;
+      // 4) Distribución multinivel (hasta 5 niveles)
+      try {
+        // obtener sponsor chain usando buyer's sponsorCode a partir del buyer doc
+        const buyerDoc2 = await db.collection('usuarios').doc(buyerUid).get();
+        let currentSponsorCode = buyerDoc2.exists ? (buyerDoc2.data().patrocinador || null) : null;
+        const buyerUsername = buyerDoc2.exists ? (buyerDoc2.data().usuario || '') : '';
 
-        const sponsorRef = db.collection('usuarios').doc(sponsor.id);
-        const percent = LEVEL_PERCENTS[level] || 0;
-        const commissionValue = Math.round(points * POINT_VALUE * percent);
+        for (let level = 0; level < LEVEL_PERCENTS.length; level++) {
+          if (!currentSponsorCode) break;
+          const sponsor = await findUserByUsername(currentSponsorCode);
+          if (!sponsor) break;
 
-        await sponsorRef.update({
-          teamPoints: admin.firestore.FieldValue.increment(points),
-          balance: admin.firestore.FieldValue.increment(commissionValue),
-          history: admin.firestore.FieldValue.arrayUnion({
-            action: `Comisión nivel ${level + 1} por compra de ${buyerUsername}`,
-            amount: commissionValue,
-            points,
-            orderId,
-            date: new Date().toISOString()
-          })
-        });
+          const sponsorRef = db.collection('usuarios').doc(sponsor.id);
+          const percent = LEVEL_PERCENTS[level] || 0;
+          const commissionValue = Math.round(points * POINT_VALUE * percent);
 
-        currentSponsorCode = sponsor.data.patrocinador || null;
+          await sponsorRef.update({
+            teamPoints: admin.firestore.FieldValue.increment(points),
+            balance: admin.firestore.FieldValue.increment(commissionValue),
+            history: admin.firestore.FieldValue.arrayUnion({
+              action: `Comisión nivel ${level + 1} por compra de ${buyerUsername}`,
+              amount: commissionValue,
+              points,
+              orderId,
+              date: new Date().toISOString()
+            })
+          });
+
+          currentSponsorCode = sponsor.data.patrocinador || null;
+        }
+      } catch (e) {
+        console.warn('Error durante la distribución multinivel (no crítico):', e);
       }
 
-      // 📜 Historial del comprador
-      await db.collection('usuarios').doc(buyerUid).update({
-        history: admin.firestore.FieldValue.arrayUnion({
-          action: `Compra confirmada: ${order.productName}`,
-          amount: order.price,
-          points: order.points,
-          orderId,
-          date: new Date().toISOString()
-        })
-      });
+      // 5) Historial del comprador (ya agregado dentro de la transacción, pero mantengo este update si quieres un registro adicional)
+      // NOTA: ya pusimos la history dentro de la transacción; evitamos duplicados intencionales.
 
       return { statusCode: 200, body: JSON.stringify({ message: 'Orden confirmada y puntos distribuidos' }) };
     }
