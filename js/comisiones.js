@@ -1,6 +1,6 @@
 // js/comisiones.js
-// Usa auth & db ya inicializados en tu módulo firebase.js
-// Asegúrate de que existe: export { auth, db } from './firebase.js'
+// Usa auth & db ya inicializados en tu módulo firebase-config.js
+// Asegúrate de que existe: export { auth, db } from './firebase-config.js'
 
 // Firestore / Auth helpers (v10)
 import {
@@ -61,7 +61,7 @@ function attachRealtimeUserAndTransactions(uid) {
   if (unsubscribeUserDoc) { try { unsubscribeUserDoc(); } catch {} unsubscribeUserDoc = null; }
   unsubscribeUserDoc = onSnapshot(userRef, (snap) => {
     if (!snap.exists()) {
-      // No existe: inicializamos (función inicializadora hará update)
+      // No existe: inicializamos (función inicializadora hará set/merge)
       initializeUserDoc(uid).catch(console.error);
       showCommissionsUI({ total: 0, pending: 0, wallet: 0 });
       return;
@@ -79,6 +79,7 @@ function attachRealtimeUserAndTransactions(uid) {
   if (unsubscribeTxs) { try { unsubscribeTxs(); } catch {} unsubscribeTxs = null; }
   const txCol = collection(db, "usuarios", uid, "transactions");
   const txQ = query(txCol, orderBy("timestamp", "desc"), limit(50));
+  console.log("attachRealtime for uid:", uid, "path: usuarios/" + uid + "/transactions");
   unsubscribeTxs = onSnapshot(txQ, (snap) => {
     const txs = [];
     snap.forEach(docSnap => txs.push({ id: docSnap.id, ...docSnap.data() }));
@@ -92,8 +93,8 @@ async function initializeUserDoc(uid) {
     await runTransaction(db, async (tx) => {
       const s = await tx.get(uRef);
       if (!s.exists()) {
-        // creamos con merge / set
-        tx.set ? tx.set(uRef, { balance: 0, totalCommissions: 0, walletBalance: 0, createdAt: serverTimestamp() }) : null;
+        // creamos con merge para no borrar otros campos si se crean en paralelo
+        tx.set(uRef, { balance: 0, totalCommissions: 0, walletBalance: 0, createdAt: serverTimestamp() }, { merge: true });
       } else {
         const data = s.data();
         const updates = {};
@@ -104,23 +105,34 @@ async function initializeUserDoc(uid) {
       }
     });
   } catch (e) {
-    // fallback: intentar update simple si runTransaction falla
-    const snap = await getDocSafe(doc(db, "usuarios", uid));
-    if (!snap || !snap.exists()) {
-      try { await updateDoc(doc(db, "usuarios", uid), { balance: 0, totalCommissions: 0, walletBalance: 0 }); } catch {}
+    // fallback: intentar set con merge si runTransaction falla
+    console.warn("initializeUserDoc transaction failed, attempting fallback set", e);
+    try {
+      await updateDoc(uRef, {}); // intenta update (no rompe si ya existe)
+    } catch (_) {
+      // si update falla (doc no existe), crearlo con set merge
+      try { await (async () => { const mod = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js"); await mod.setDoc ? mod.setDoc(uRef, { balance: 0, totalCommissions: 0, walletBalance: 0, createdAt: serverTimestamp() }, { merge: true }) : null; })(); } catch (e2) {
+        // simpler fallback: use add/update via updateDoc won't work without import, but no-op here
+        console.warn("fallback create failed", e2);
+      }
     }
   }
 }
 
 // helper seguro getDoc (evita crash si import faltante)
+// Nota: conservamos getDoc import inicial pero este helper intenta import dinámico si hace falta
 async function getDocSafe(ref) {
   try {
-    // dynamic import of getDoc to avoid duplicate import name above
-    const mod = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
-    return await mod.getDoc(ref);
+    // si getDoc ya está disponible arriba, podemos usarlo
+    return await getDoc(ref);
   } catch (e) {
-    console.warn("getDocSafe failed", e);
-    return null;
+    try {
+      const mod = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
+      return await mod.getDoc(ref);
+    } catch (e2) {
+      console.warn("getDocSafe failed", e2);
+      return null;
+    }
   }
 }
 
@@ -140,19 +152,22 @@ async function addEarnings(uid, amount = 0, meta = {}) {
     const oldTotal = Number(data.totalCommissions ?? 0);
     const newBalance = oldBalance + amount;
     const newTotal = oldTotal + amount;
-    // usar set con merge si tx.set disponible, si no update
-    if (tx.set) {
-      tx.set(uRef, { balance: newBalance, totalCommissions: newTotal }, { merge: true });
-    } else {
-      tx.update(uRef, { balance: newBalance, totalCommissions: newTotal });
-    }
+
+    // usar set con merge para crear o actualizar
+    tx.set(uRef, { balance: newBalance, totalCommissions: newTotal }, { merge: true });
     txResult = { newBalance, newTotal };
   });
 
-  // registrar transacción
+  // registrar transacción (incluimos ownerUid para corresponder a reglas)
   try {
     const txCol = collection(db, "usuarios", uid, "transactions");
-    await addDoc(txCol, { type: "earning", amount, meta: meta || {}, timestamp: serverTimestamp() });
+    await addDoc(txCol, {
+      type: "earning",
+      amount,
+      meta: meta || {},
+      timestamp: serverTimestamp(),
+      ownerUid: uid
+    });
   } catch (err) {
     console.warn("addEarnings: registrar transaction falló", err);
   }
@@ -193,10 +208,16 @@ async function cobrarPending(uid, amount = null) {
     result = { withdrawn: toWithdraw, newBalance, newWallet };
   });
 
-  // registrar withdraw
+  // registrar withdraw (incluimos ownerUid)
   try {
     const txCol = collection(db, "usuarios", uid, "transactions");
-    await addDoc(txCol, { type: "withdraw", amount: result.withdrawn, timestamp: serverTimestamp(), note: "Cobro desde UI" });
+    await addDoc(txCol, {
+      type: "withdraw",
+      amount: result.withdrawn,
+      timestamp: serverTimestamp(),
+      note: "Cobro desde UI",
+      ownerUid: uid
+    });
   } catch (err) {
     console.warn("cobrarPending: registrar withdraw falló", err);
   }
