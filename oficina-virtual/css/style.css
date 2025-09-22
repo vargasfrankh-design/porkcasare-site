@@ -204,13 +204,18 @@ body {
 }
 
 /* node styles for d3 tree */
-.node-r
+.node-rect { fill:#ffffff; stroke:#2b92e6; stroke-width:2; rx:8; ry:8; }
+.node-root { fill:#2b9df3 !important; }
+.node-active { fill:#28a745 !important; }
+.node-inactive { fill:#cfcfcf !important; }
+
+.link-line { stroke:#dfeeff; stroke-width:2; fill:none; }
 
 /* Productos */
 .product-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 20px;
+  gap: 20px;           /* <-- separa columnas y filas */
   margin-top: 12px;
 }
 
@@ -224,7 +229,9 @@ body {
   transition: transform 0.18s;
 }
 
-.product-card:hover { transform: translateY(-4px); }
+.product-card:hover {
+  transform: translateY(-4px);
+}
 
 .product-card img {
   width: 100%;
