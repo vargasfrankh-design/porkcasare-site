@@ -240,3 +240,60 @@ body {
   border-radius: 6px;
   margin-bottom: 10px;
 }
+
+/* --- Comisiones: bloque antes del link de referido --- */
+.comisiones {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 16px; /* espacio antes del link de referido */
+  padding: 12px;
+  border: 1px solid #e6eefc;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  border-radius: 8px;
+  max-width: 720px;
+  box-shadow: 0 1px 4px rgba(43,146,230,0.06);
+  flex-wrap: wrap;
+}
+
+/* cada item de comision (label + valor) */
+.comision-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  flex: 1 1 180px;
+}
+
+/* etiqueta (pequeña) */
+.comision-label {
+  font-size: 13px;
+  color: #4b5563; /* gris azulado */
+  margin-bottom: 6px;
+}
+
+/* valor grande */
+.comision-value {
+  font-weight: 700;
+  font-size: 18px;
+  color: #0b6b29; /* verde para montos positivos */
+  background: rgba(11,107,41,0.04);
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(11,107,41,0.08);
+  text-align: left;
+}
+
+/* si quieres resaltar comisiones por cobrar (por ejemplo si >0) */
+.comision-value.pending {
+  color: #9a6700; /* color ámbar para atención */
+  border-color: rgba(154,103,0,0.08);
+  background: rgba(154,103,0,0.04);
+}
+
+/* responsive: en pantallas muy pequeñas, los items se apilan */
+@media (max-width: 520px) {
+  .comisiones { gap: 10px; padding: 10px; }
+  .comision-item { min-width: 100%; }
+  .comision-value { font-size: 16px; }
+}
