@@ -1,24 +1,24 @@
-// comisiones_reparado.js
-// Repaired/completed version of js/comisiones.js
-// Asegúrate de que la ruta a firebase-config.js es correcta en tu proyecto (ej. /src/firebase-config.js)
-// Nota: incluye console.log para verificar carga.
-console.log("comisiones_reparado.js cargado");
+// comisiones_reparado_both.js
+// Versión reparada que mantiene la subcolección usuarios/{uid}/transactions
+// y además muestra en el index ambas fuentes (campo history[] y subcolección transactions).
+// Ajusta la ruta a firebase-config.js si es necesario.
 
-// IMPORTS (ajusta versiones si necesitas)
+console.log("comisiones_reparado_both.js cargado");
+
+// IMPORTS (Firebase v10 modular)
 import {
-  doc, getDoc, onSnapshot, runTransaction, collection, addDoc, serverTimestamp,
-  updateDoc, query, orderBy, limit
+  doc, collection, addDoc, serverTimestamp, arrayUnion,
+  onSnapshot, query, orderBy, limit, runTransaction, updateDoc
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-import { auth, db } from "/src/firebase-config.js"; // asegúrate de que la ruta coincide
+import { auth, db } from "/src/firebase-config.js"; // ajusta si tu ruta es distinta
 
-// DOM elements (asegúrate de que existen en el HTML)
+// DOM elements — ajusta IDs a tu HTML
 const elTotal = document.getElementById("totalCommissions");
 const elPending = document.getElementById("pendingCommissions");
 const elWallet = document.getElementById("walletBalance");
 const btnCobrar = document.getElementById("btnCobrar");
-const lastTxInfo = document.getElementById("lastTxInfo");
 const historyEl = document.getElementById("history");
 
 // Utilidades
@@ -31,87 +31,130 @@ function formatCurrency(amount = 0) {
   }
 }
 
-// Render simple del historial (puedes adaptar diseño)
-function renderHistory(txs = []) {
+// ---- Manejo combinado de historiales ----
+let unsubscribeUserDoc = null;
+let unsubscribeTxs = null;
+
+let userHistoryArray = []; // entries desde usuarios/{uid}.history (campo array)
+let txDocsArray = [];      // entries desde usuarios/{uid}/transactions (subcolección)
+
+// Normaliza entrada a formato común
+function normalizeEntry(entry, source, docId = null) {
+  let ts = entry.timestamp ?? entry.date ?? null;
+  if (ts && typeof ts.toDate === "function") {
+    ts = ts.toDate();
+  } else if (ts && typeof ts.seconds === "number") {
+    ts = new Date(ts.seconds * 1000);
+  } else if (typeof ts === "string" || typeof ts === "number") {
+    ts = new Date(ts);
+  } else {
+    ts = new Date();
+  }
+
+  const id = docId ? `tx_${docId}` : `h_${ts.getTime()}_${entry.type || 'x'}_${entry.amount ?? 0}`;
+
+  return {
+    _id: id,
+    source,
+    type: entry.type || "unknown",
+    amount: Number(entry.amount ?? 0),
+    ts,
+    meta: entry.meta || {},
+    note: entry.note || entry.action || "",
+    raw: entry
+  };
+}
+
+function buildCombinedList() {
+  const all = [];
+  userHistoryArray.forEach(e => all.push(normalizeEntry(e, "historyField", null)));
+  txDocsArray.forEach(e => all.push(normalizeEntry(e.data, "transactionsCollection", e.id)));
+
+  // Deduplicate by _id
+  const map = new Map();
+  for (const it of all) map.set(it._id, it);
+  const merged = Array.from(map.values());
+
+  // Sort desc by timestamp
+  merged.sort((a, b) => b.ts - a.ts);
+  return merged;
+}
+
+function renderCombinedHistory() {
+  const merged = buildCombinedList();
   if (!historyEl) return;
-  if (!txs.length) {
+  if (!merged.length) {
     historyEl.innerHTML = '<div class="history-empty">No hay transacciones aún.</div>';
     return;
   }
-  historyEl.innerHTML = txs.map(tx => {
-    const ts = tx.timestamp && tx.timestamp.toDate ? tx.timestamp.toDate() : (tx.timestamp ? new Date(tx.timestamp) : new Date());
-    const when = ts.toLocaleString();
-    if (tx.type === "earning") {
-      return `<div class="entry"><div><strong>+ ${formatCurrency(tx.amount)}</strong></div><div class="muted">${when}${tx.meta?.action ? ' • ' + tx.meta.action : ''}</div></div>`;
-    } else if (tx.type === "withdraw") {
-      return `<div class="entry"><div><strong>- ${formatCurrency(tx.amount)}</strong></div><div class="muted">${when}${tx.note ? ' • ' + tx.note : ''}</div></div>`;
-    } else {
-      return `<div class="entry"><div><strong>${formatCurrency(tx.amount)} — ${tx.type}</strong></div><div class="muted">${when}</div></div>`;
-    }
+
+  historyEl.innerHTML = merged.map(entry => {
+    const when = entry.ts.toLocaleString();
+    const sign = entry.type === "withdraw" ? "-" : (entry.type === "earning" ? "+" : "");
+    const desc = entry.note || (entry.meta && entry.meta.action) || entry.type;
+    return `
+      <div class="entry">
+        <div><strong>${sign} ${formatCurrency(entry.amount)}</strong></div>
+        <div class="muted">${when} • ${desc} <span class="source">(${entry.source})</span></div>
+      </div>
+    `;
   }).join("");
 }
 
-// Subscribir datos en tiempo real del usuario
-let unsubscribeUserDoc = null;
-let unsubscribeTxs = null;
-function attachRealtimeForUser(uid) {
+// Attach listeners para ambas fuentes
+function attachRealtimeForUserBoth(uid) {
   if (!uid) return;
-  // user doc
+
   if (unsubscribeUserDoc) { try { unsubscribeUserDoc(); } catch {} unsubscribeUserDoc = null; }
+  if (unsubscribeTxs) { try { unsubscribeTxs(); } catch {} unsubscribeTxs = null; }
+
   const uRef = doc(db, "usuarios", uid);
   unsubscribeUserDoc = onSnapshot(uRef, (snap) => {
     const data = snap.exists() ? snap.data() : {};
-    const pending = Number(data.balance ?? 0);
-    const total = Number(data.totalCommissions ?? pending);
-    const wallet = Number(data.walletBalance ?? 0);
-    if (elPending) elPending.textContent = formatCurrency(pending);
-    if (elTotal) elTotal.textContent = formatCurrency(total);
-    if (elWallet) elWallet.textContent = formatCurrency(wallet);
-  }, (err) => console.error("user onSnapshot error:", err));
+    if (Array.isArray(data.history)) {
+      userHistoryArray = data.history.slice();
+    } else {
+      userHistoryArray = [];
+    }
 
-  // transactions listener (últimos 50)
-  if (unsubscribeTxs) { try { unsubscribeTxs(); } catch {} unsubscribeTxs = null; }
+    // Actualiza balances visibles si existen
+    if (elPending) elPending.textContent = formatCurrency(Number(data.balance ?? 0));
+    if (elTotal) elTotal.textContent = formatCurrency(Number(data.totalCommissions ?? 0));
+    if (elWallet) elWallet.textContent = formatCurrency(Number(data.walletBalance ?? 0));
+
+    renderCombinedHistory();
+  }, (err) => console.error("onSnapshot usuarios error:", err));
+
   const txCol = collection(db, "usuarios", uid, "transactions");
-  const txQ = query(txCol, orderBy("timestamp", "desc"), limit(50));
+  const txQ = query(txCol, orderBy("timestamp", "desc"), limit(200));
   unsubscribeTxs = onSnapshot(txQ, (snap) => {
-    const txs = [];
-    snap.forEach(docSnap => txs.push({ id: docSnap.id, ...docSnap.data() }));
-    renderHistory(txs);
-  }, (err) => console.error("transactions onSnapshot error:", err));
+    const arr = [];
+    snap.forEach(d => arr.push({ id: d.id, data: d.data() }));
+    txDocsArray = arr;
+    renderCombinedHistory();
+  }, (err) => console.error("onSnapshot transactions error:", err));
 }
 
-// Asegurarse de que el doc de usuario tiene campos básicos
-async function initializeUserDoc(uid) {
-  const uRef = doc(db, "usuarios", uid);
-  try {
-    await runTransaction(db, async (tx) => {
-      const s = await tx.get(uRef);
-      if (!s.exists()) {
-        tx.set(uRef, { balance: 0, totalCommissions: 0, walletBalance: 0, createdAt: serverTimestamp() }, { merge: true });
-      } else {
-        const data = s.data();
-        const updates = {};
-        if (data.balance === undefined) updates.balance = 0;
-        if (data.totalCommissions === undefined) updates.totalCommissions = 0;
-        if (data.walletBalance === undefined) updates.walletBalance = 0;
-        if (Object.keys(updates).length) tx.update(uRef, updates);
-      }
-    });
-  } catch (e) {
-    console.warn("initializeUserDoc transaction failed:", e);
-    // no fatal, pero sería bueno revisar consola si esto ocurre
-  }
-}
+// ---- Funciones para crear transacciones (escriben en subcolección y actualizan el campo history[]) ----
 
-// Registrar earning (ej. cuando generas comisiones)
+// Añade earning: actualiza balances (transaction), push a history[] y crea doc en subcolección
 async function addEarnings(uid, amount = 0, meta = {}) {
   if (!uid) throw new Error("Usuario no autenticado");
   amount = Number(amount);
   if (isNaN(amount) || amount <= 0) throw new Error("Monto inválido");
 
   const uRef = doc(db, "usuarios", uid);
-  let txResult = null;
+  // Entrada para history[]
+  const entry = {
+    type: "earning",
+    amount,
+    timestamp: serverTimestamp(),
+    meta,
+    note: meta.action || "",
+    by: meta.by || (auth.currentUser ? auth.currentUser.uid : "system")
+  };
 
+  // Transaction: actualizar balances y push a history[]
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(uRef);
     const data = snap.exists() ? snap.data() : {};
@@ -119,45 +162,32 @@ async function addEarnings(uid, amount = 0, meta = {}) {
     const oldTotal = Number(data.totalCommissions ?? 0);
     const newBalance = oldBalance + amount;
     const newTotal = oldTotal + amount;
-    tx.set(uRef, { balance: newBalance, totalCommissions: newTotal }, { merge: true });
-    txResult = { newBalance, newTotal };
+    tx.update(uRef, {
+      balance: newBalance,
+      totalCommissions: newTotal,
+      history: arrayUnion(entry)
+    });
   });
 
-  try {
-    const txCol = collection(db, "usuarios", uid, "transactions");
-    await addDoc(txCol, {
-      type: "earning",
-      amount,
-      timestamp: serverTimestamp(),
-      meta,
-      ownerUid: uid
-    });
-  } catch (e) {
-    console.error("addEarnings addDoc error:", e);
-    throw e;
-  }
-  return txResult;
+  // Crear documento en subcolección transactions (no dentro de la transaction)
+  const txCol = collection(db, "usuarios", uid, "transactions");
+  await addDoc(txCol, {
+    type: "earning",
+    amount,
+    timestamp: serverTimestamp(),
+    meta,
+    ownerUid: uid
+  });
+
+  return { success: true };
 }
 
-// Cobrar balance pendiente -> mueve a wallet / registra withdraw
+// Cobrar balance pendiente: transaction para balances + history[], y doc en subcolección
 async function cobrarPending(uid, amount = null) {
   if (!uid) throw new Error("Usuario no autenticado");
 
-  // Confirmación opcional con SweetAlert si está disponible
-  if (window.Swal) {
-    const res = await Swal.fire({
-      title: "¿Deseas cobrar ahora?",
-      text: amount ? `Se cobrará ${formatCurrency(amount)}.` : "Se cobrará todo tu balance disponible.",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "Sí, cobrar"
-    });
-    if (!res.isConfirmed) return null;
-  }
-
   const uRef = doc(db, "usuarios", uid);
   let result = null;
-
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(uRef);
     if (!snap.exists()) throw new Error("Usuario no encontrado");
@@ -169,62 +199,93 @@ async function cobrarPending(uid, amount = null) {
     if (toWithdraw > currentBalance) throw new Error("Saldo insuficiente");
     const newBalance = currentBalance - toWithdraw;
     const newWallet = wallet + toWithdraw;
-    tx.update(uRef, { balance: newBalance, walletBalance: newWallet });
+
+    const entry = {
+      type: "withdraw",
+      amount: toWithdraw,
+      timestamp: serverTimestamp(),
+      note: "Cobro desde UI",
+      by: (auth.currentUser && auth.currentUser.uid) ? auth.currentUser.uid : "system"
+    };
+
+    tx.update(uRef, {
+      balance: newBalance,
+      walletBalance: newWallet,
+      history: arrayUnion(entry)
+    });
+
     result = { withdrawn: toWithdraw, newBalance, newWallet };
   });
 
-  try {
-    const txCol = collection(db, "usuarios", uid, "transactions");
-    await addDoc(txCol, {
-      type: "withdraw",
-      amount: result.withdrawn,
-      timestamp: serverTimestamp(),
-      note: "Cobro desde UI",
-      ownerUid: uid
-    });
-  } catch (err) {
-    console.error("cobrarPending addDoc error:", err);
-    throw err;
-  }
+  // Registrar en subcolección
+  const txCol = collection(db, "usuarios", uid, "transactions");
+  await addDoc(txCol, {
+    type: "withdraw",
+    amount: result.withdrawn,
+    timestamp: serverTimestamp(),
+    note: "Cobro desde UI",
+    ownerUid: uid
+  });
 
-  if (window.Swal) Swal.fire("¡Hecho!", `Se transfirieron ${formatCurrency(result.withdrawn)} a tu wallet.`, "success");
   return result;
 }
 
-// Hook auth
+// ---- Hook de autenticación: conectar listeners y botón cobrar ----
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
-    // usuario no autenticado: desactivar botón
     if (btnCobrar) btnCobrar.disabled = true;
     if (unsubscribeUserDoc) { try { unsubscribeUserDoc(); } catch {} unsubscribeUserDoc = null; }
     if (unsubscribeTxs) { try { unsubscribeTxs(); } catch {} unsubscribeTxs = null; }
     return;
   }
   const uid = user.uid;
-  // inicializar doc por si no existe
-  await initializeUserDoc(uid);
-  attachRealtimeForUser(uid);
 
-  // conectar botón cobrar
+  // Inicializa campos mínimos si es necesario (no obligatorio aquí)
+  try {
+    await runTransaction(db, async (tx) => {
+      const uRef = doc(db, "usuarios", uid);
+      const s = await tx.get(uRef);
+      if (!s.exists()) {
+        tx.set(uRef, { balance: 0, totalCommissions: 0, walletBalance: 0, history: [], createdAt: serverTimestamp() });
+      } else {
+        const data = s.data();
+        const updates = {};
+        if (data.balance === undefined) updates.balance = 0;
+        if (data.totalCommissions === undefined) updates.totalCommissions = 0;
+        if (data.walletBalance === undefined) updates.walletBalance = 0;
+        if (!Array.isArray(data.history)) updates.history = [];
+        if (Object.keys(updates).length) tx.update(uRef, updates);
+      }
+    });
+  } catch (e) {
+    console.warn("initializeUserDoc failed:", e);
+  }
+
+  // Attach listeners for both sources
+  attachRealtimeForUserBoth(uid);
+
+  // Conectar botón cobrar (clonar para evitar múltiples listeners)
   if (btnCobrar) {
     const newBtn = btnCobrar.cloneNode(true);
     btnCobrar.parentNode.replaceChild(newBtn, btnCobrar);
     newBtn.disabled = false;
     newBtn.addEventListener("click", async () => {
       newBtn.disabled = true;
+      const originalText = newBtn.textContent;
       newBtn.textContent = "Procesando...";
       try {
         await cobrarPending(uid);
+        console.log("Cobro realizado");
       } catch (e) {
         console.error("Error cobrando:", e);
         if (window.Swal) Swal.fire("Error", e.message || "Error al cobrar", "error");
       } finally {
         newBtn.disabled = false;
-        newBtn.textContent = "Cobrar";
+        newBtn.textContent = originalText || "Cobrar";
       }
     });
   }
 });
 
-// Exporta funciones si quieres usarlas desde otros módulos
-export { addEarnings, cobrarPending, initializeUserDoc, formatCurrency };
+// Exportar funciones útiles
+export { addEarnings, cobrarPending, attachRealtimeForUserBoth, normalizeEntry };
