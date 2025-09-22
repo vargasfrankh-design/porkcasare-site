@@ -261,15 +261,21 @@ function renderTree(rootNode) {
     });
   });
 
-  // Nodos
+    // Nodos
   nodePos.forEach(({ x, y, node }) => {
     const g = document.createElementNS(svgNS, "g");
     g.setAttribute("transform", `translate(${x},${y})`);
+    g.setAttribute("data-usuario", node.usuario || "");
+    g.style.cursor = "pointer";
+    g.style.touchAction = "manipulation";
+    g.style.webkitTapHighlightColor = "transparent";
+
     const circle = document.createElementNS(svgNS, "circle");
     circle.setAttribute("r", 30);
     circle.setAttribute("fill", node.usuario === rootNode.usuario ? "#2b9df3" : node.active ? "#28a745" : "#bfbfbf");
     circle.setAttribute("stroke", "#ffffff");
     circle.setAttribute("stroke-width", "3");
+    circle.setAttribute("pointer-events", "none");
     g.appendChild(circle);
 
     const txt = document.createElementNS(svgNS, "text");
@@ -278,37 +284,19 @@ function renderTree(rootNode) {
     txt.setAttribute("fill", "#fff");
     txt.style.fontSize = "12px";
     txt.textContent = node.usuario.length > 12 ? node.usuario.slice(0, 10) + "…" : node.usuario;
+    txt.setAttribute("pointer-events", "none");
     g.appendChild(txt);
 
-    g.addEventListener("click", () => showInfoCard(node));
+    const handleSelect = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showInfoCard(node, e);
+    };
+    g.addEventListener('pointerup', handleSelect, { passive: true });
+    g.addEventListener('click', handleSelect, { passive: true });
+
     svg.appendChild(g);
   });
-}
-
-function updateStatsFromTree(rootNode) {
-  const statFrontales = document.getElementById("statFrontales");
-  const statTotal = document.getElementById("statTotal");
-  const statRecompra = document.getElementById("statRecompra");
-
-  if (!rootNode) {
-    if (statFrontales) statFrontales.textContent = "0";
-    if (statTotal) statTotal.textContent = "0";
-    if (statRecompra) statRecompra.textContent = "0";
-    return;
-  }
-
-  let total = 0, activos = 0;
-  const q = [{ node: rootNode, depth: 0 }];
-  while (q.length) {
-    const { node, depth } = q.shift();
-    if (depth > 0) total++;
-    if (depth > 0 && node.active) activos++;
-    if (node.children?.length) node.children.forEach(c => q.push({ node: c, depth: depth + 1 }));
-  }
-  if (statFrontales) statFrontales.textContent = rootNode.children?.length || 0;
-  if (statTotal) statTotal.textContent = total;
-  if (statRecompra) statRecompra.textContent = activos;
-}
 
 /* -------------------- INFO CARD -------------------- */
 
