@@ -8,7 +8,11 @@ import {
   getDoc,
   updateDoc,
   arrayUnion,
-  increment
+  increment,
+  collection,
+  query,
+  where,
+  getDocs
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -36,11 +40,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const refInput = document.getElementById("refLink");
       const copyBtn = document.getElementById("copyRef");
 
-      if (nombreEl) nombreEl.textContent = userData.nombre || userData.usuario;
-      if (usuarioEl) usuarioEl.textContent = userData.usuario;
+      if (nombreEl) nombreEl.textContent = userData.nombre || userData.usuario || "";
+      if (usuarioEl) usuarioEl.textContent = userData.usuario || "";
       if (emailEl) emailEl.textContent = user.email || userData.email || "";
       if (profileImg) {
-        if (userData.fotoURL) profileImg.src = `../${userData.fotoURL}`;
+        if (userData.fotoURL) profileImg.src = userData.fotoURL.startsWith("http") ? userData.fotoURL : `../${userData.fotoURL}`;
         else profileImg.src = `../images/avatars/avatar_${(Math.floor(Math.random()*6)+1)}.png`;
       }
 
@@ -54,10 +58,16 @@ document.addEventListener("DOMContentLoaded", () => {
             copyBtn.textContent = "¡Copiado!";
             setTimeout(() => (copyBtn.textContent = "Copiar"), 1500);
           } catch (err) {
-            refInput.select();
-            document.execCommand("copy");
-            copyBtn.textContent = "¡Copiado!";
-            setTimeout(() => (copyBtn.textContent = "Copiar"), 1500);
+            // Fallback
+            try {
+              refInput.select();
+              document.execCommand("copy");
+              copyBtn.textContent = "¡Copiado!";
+              setTimeout(() => (copyBtn.textContent = "Copiar"), 1500);
+            } catch (err2) {
+              console.error("Error copiando al portapapeles:", err, err2);
+              alert("No se pudo copiar el enlace automáticamente. Seleccione y copie manualmente.");
+            }
           }
         });
       }
@@ -84,12 +94,17 @@ document.addEventListener("DOMContentLoaded", () => {
       const avatarImgs = document.querySelectorAll(".avatar-img");
 
       const avatarFromDB = userData.fotoURL;
-      if (avatarImgs) {
+      if (avatarImgs && avatarImgs.length) {
         avatarImgs.forEach(imgEl => {
           imgEl.addEventListener("click", async () => {
+            // prevenir doble-clicks múltiples
+            imgEl.disabled = true;
             const selectedAvatar = `images/avatars/${imgEl.dataset.avatar}`;
             try {
-              await updateDoc(docRef, { fotoURL: selectedAvatar });
+              // solo escribir si cambió realmente
+              if (userData.fotoURL !== selectedAvatar) {
+                await updateDoc(docRef, { fotoURL: selectedAvatar });
+              }
               if (profileImg) profileImg.src = `../${selectedAvatar}`;
               localStorage.setItem("selectedAvatar", selectedAvatar);
               if (avatarGrid) avatarGrid.style.display = "none";
@@ -98,6 +113,8 @@ document.addEventListener("DOMContentLoaded", () => {
             } catch (err) {
               console.error("❌ Error guardando avatar:", err);
               alert("Error al actualizar avatar.");
+            } finally {
+              imgEl.disabled = false;
             }
           });
         });
@@ -119,33 +136,52 @@ document.addEventListener("DOMContentLoaded", () => {
       // --- Historial ---
       const historyWrap = document.getElementById("historyWrap");
       if (historyWrap) {
-        const history = userData.history || [];
+        const history = Array.isArray(userData.history) ? userData.history : [];
         historyWrap.innerHTML = "";
         history.slice().reverse().forEach(h => {
           const li = document.createElement("div");
           li.className = "hist-item";
-          li.innerHTML = `<div class="hist-action">${h.action || ""}</div>
-                          <div class="hist-info">${h.points ? h.points + " pts" : ""} ${h.amount ? "$" + h.amount : ""}</div>
-                          <div class="hist-date">${h.date ? new Date(h.date).toLocaleString() : ""}</div>`;
+          const actionTxt = h?.action || "";
+          const pointsTxt = h?.points ? (h.points + " pts") : "";
+          const amountTxt = h?.amount ? ("$" + h.amount) : "";
+          const dateTxt = h?.date ? new Date(h.date).toLocaleString() : "";
+          li.innerHTML = `<div class="hist-action">${escapeHtml(actionTxt)}</div>
+                          <div class="hist-info">${escapeHtml(pointsTxt)} ${escapeHtml(amountTxt)}</div>
+                          <div class="hist-date">${escapeHtml(dateTxt)}</div>`;
           historyWrap.appendChild(li);
         });
       }
 
       // --- Mostrar puntos actuales (puntos personales) ---
+      // Preferir personalPoints si existe, fallback a puntos (compatibilidad)
       const puntosEl = document.getElementById("misPuntos");
-      if (puntosEl) puntosEl.textContent = userData.puntos || 0;
+      const personalPointsValue = Number(userData.personalPoints ?? userData.puntos ?? 0);
+      if (puntosEl) puntosEl.textContent = String(personalPointsValue);
 
       // --- Mostrar teamPoints (si está disponible) ---
       const teamEl = document.getElementById("teamPoints");
-      if (teamEl) teamEl.textContent = userData.teamPoints || 0;
+      if (teamEl) {
+        teamEl.textContent = (typeof userData.teamPoints === "number") ? String(userData.teamPoints) : "-";
+      }
 
       // ----------------------------------------------
       // Ejemplo de asignación de bono inicial que usaba lectura y escritura no atómica:
       // Reemplazado por uso de increment() para evitar condiciones de carrera.
+      // NOTA: esta función NO se ejecuta automáticamente aquí; debe invocarse explícitamente desde lógica admin o endpoint.
       // ----------------------------------------------
-      async function giveInitialBonusIfApplies(sponsorId, userId) {
+      async function giveInitialBonusIfApplies(sponsorIdentifier, userId) {
         try {
-          if (!sponsorId) return;
+          if (!sponsorIdentifier) return;
+
+          // sponsorIdentifier puede ser doc.id o username; intentamos resolver a doc.id si parece username
+          let sponsorId = sponsorIdentifier;
+          // heurística: si sponsorIdentifier no tiene longitud típica de UID, buscar por username
+          if (typeof sponsorIdentifier === "string" && sponsorIdentifier.length < 30) {
+            // intentar buscar por usuario (username)
+            const q = query(collection(db, "usuarios"), where("usuario", "==", sponsorIdentifier), where("role", "!=", "deleted"));
+            const res = await getDocs(q);
+            if (!res.empty) sponsorId = res.docs[0].id;
+          }
 
           const sponsorRef = doc(db, "usuarios", sponsorId);
           const sponsorSnap = await getDoc(sponsorRef);
@@ -182,7 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // --- Escuchar evento personalizado para mostrar alerta de activación ---
 document.addEventListener("personalPointsReady", (e) => {
-  const personalPoints = e.detail.personalPoints;
+  const personalPoints = Number(e.detail.personalPoints ?? 0);
   const alertEl = document.getElementById("activationAlert");
   if (alertEl) {
     alertEl.style.display = (personalPoints < 50) ? "block" : "none";
@@ -197,4 +233,15 @@ if (toggleDarkMode) {
     localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
   });
   if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
+}
+
+/* -------------------- UTILIDADES LOCALES -------------------- */
+
+function escapeHtml(str = "") {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
