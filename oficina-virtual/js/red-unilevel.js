@@ -5,7 +5,7 @@
  * - Soporta documentos con `patrocinadorId` (doc.id) o `patrocinador` (username).
  * - Normaliza lectura de puntos: `puntos || personalPoints || 0`.
  * - calculateTeamPoints() es solo lectura (no sobrescribe).
- * - persistTeamPointsSafely(userId) opcional para guardar total con transacción.
+ * - persistTeamPointsSafely(userId) opcional para guardar total con transacción (NO llamada automáticamente).
  * - UI: renderTree, info card, onAuthStateChanged y botones.
  */
 
@@ -195,7 +195,7 @@ async function calculateTeamPoints(userId) {
 /**
  * persistTeamPointsSafely(userId)
  * - Transacción para persistir teamPoints = total calculado.
- * - Usar solo si decides guardar el total recalculado.
+ * - Usar solo si decides guardar el total recalculado (DEBE ser llamada desde backend o admin endpoint).
  */
 async function persistTeamPointsSafely(userId) {
   const userRef = doc(db, "usuarios", userId);
@@ -353,15 +353,72 @@ function showInfoCard(node) {
   if (pointsEl) pointsEl.textContent = `${node.puntos || 0} pts`;
 }
 
+/* -------------------- LECTURA Y RENDERIZADO SEGURO DE PUNTOS -------------------- */
+
+/**
+ * readAndRenderPoints(userId)
+ * - LEE personalPoints/puntos y teamPoints desde Firestore (NO escribe)
+ * - Actualiza DOM (#points, #teamPoints, #activationAlert)
+ * - Si no existe teamPoints persistido, calcula en memoria para mostrar (NO persiste)
+ */
+async function readAndRenderPoints(userId) {
+  try {
+    if (!userId) return;
+    const uRef = doc(db, "usuarios", userId);
+    const uSnap = await getDoc(uRef);
+    if (!uSnap.exists()) {
+      // limpiar UI si el usuario no existe
+      const pointsEl = document.getElementById("points");
+      if (pointsEl) pointsEl.textContent = "0";
+      const tpEl = document.getElementById("teamPoints");
+      if (tpEl) tpEl.textContent = "-";
+      const alertEl = document.getElementById("activationAlert");
+      if (alertEl) alertEl.style.display = "block";
+      return;
+    }
+    const d = uSnap.data();
+    // Preferir personalPoints, fallback a puntos
+    const personal = Number(d.personalPoints ?? d.puntos ?? 0);
+
+    // Preferir teamPoints persistido (si existe). Si no, intentar calcular en memoria SOLO para mostrar.
+    let teamPersisted = (typeof d.teamPoints === "number") ? d.teamPoints : null;
+    if (teamPersisted === null) {
+      try {
+        teamPersisted = await calculateTeamPoints(userId);
+      } catch (e) {
+        console.warn("No se pudo calcular teamPoints en cliente:", e);
+        teamPersisted = 0;
+      }
+    }
+
+    // Actualizar DOM
+    const pointsEl = document.getElementById("points");
+    if (pointsEl) pointsEl.textContent = String(personal);
+
+    const tpEl = document.getElementById("teamPoints");
+    if (tpEl) tpEl.textContent = String(teamPersisted);
+
+    const alertEl = document.getElementById("activationAlert");
+    if (alertEl) alertEl.style.display = (personal < 50) ? "block" : "none";
+  } catch (err) {
+    console.error("readAndRenderPoints error:", err);
+  }
+}
+
 /* -------------------- REFRESH / UI / AUTH -------------------- */
 
+/**
+ * refreshTreeAndStats(rootCode, userId)
+ * - Reconstruye árbol y actualiza stats.
+ * - NO persiste teamPoints ni personalPoints desde el cliente.
+ * - Solo muestra valores leídos/calculados para evitar sobrescrituras.
+ */
 async function refreshTreeAndStats(rootCode, userId) {
   const tree = await buildUnilevelTree(rootCode);
   renderTree(tree);
   updateStatsFromTree(tree);
-  const totalTeamPoints = await calculateTeamPoints(userId);
-  const tpEl = document.getElementById("teamPoints");
-  if (tpEl) tpEl.textContent = totalTeamPoints;
+  // lee y renderiza puntos de forma segura (NO sobrescribe la BD)
+  await readAndRenderPoints(userId);
 }
 
 /* Manejo de estado de sesión y UI inicial */
@@ -389,17 +446,18 @@ onAuthStateChanged(auth, async (user) => {
     const codeEl = document.getElementById("code");
     if (codeEl) codeEl.textContent = rootCode;
 
+    // En lugar de recalcular/persistir, LEEMOS y mostramos lo que está en Firestore
     const pointsEl = document.getElementById("points");
-    if (pointsEl) pointsEl.textContent = d.puntos || d.personalPoints || 0;
+    if (pointsEl) pointsEl.textContent = String(d.personalPoints ?? d.puntos ?? 0);
 
     const refCodeEl = document.getElementById("refCode");
     if (refCodeEl) refCodeEl.value = `${window.location.origin}/registro?ref=${rootCode}`;
 
     // Mostrar alerta de activación si aplica
     const alertEl = document.getElementById("activationAlert");
-    if (alertEl) alertEl.style.display = (Number(d.puntos || d.personalPoints || 0) < 50 && !d.initialPackBought) ? "block" : "none";
+    if (alertEl) alertEl.style.display = (Number(d.personalPoints ?? d.puntos ?? 0) < 50 && !d.initialPackBought) ? "block" : "none";
 
-    // Puntos personales (evento)
+    // Puntos personales (evento) - sigue calculando desde history para compatibilidad de evento
     const personalPoints = calculatePersonalPoints(d[FIELD_HISTORY] || []);
     let elHidden = document.getElementById("personalPointsValue");
     if (!elHidden) {
@@ -411,10 +469,20 @@ onAuthStateChanged(auth, async (user) => {
     elHidden.textContent = personalPoints;
     document.dispatchEvent(new CustomEvent("personalPointsReady", { detail: { personalPoints } }));
 
-    // Calcula y muestra teamPoints (lectura)
-    const totalTeamPoints = await calculateTeamPoints(user.uid);
-    const tpEl2 = document.getElementById("teamPoints");
-    if (tpEl2) tpEl2.textContent = totalTeamPoints;
+    // Mostrar teamPoints: preferir valor persistido; si no existe, calcular solo para mostrar (no persistir)
+    if (typeof d.teamPoints === "number") {
+      const tpEl2 = document.getElementById("teamPoints");
+      if (tpEl2) tpEl2.textContent = String(d.teamPoints);
+    } else {
+      // calcular en memoria y mostrar (NO persistir)
+      try {
+        const totalTeamPoints = await calculateTeamPoints(user.uid);
+        const tpEl2 = document.getElementById("teamPoints");
+        if (tpEl2) tpEl2.textContent = String(totalTeamPoints);
+      } catch (e) {
+        console.warn("No se pudo calcular teamPoints para mostrar:", e);
+      }
+    }
 
     // Construir y renderizar árbol
     const tree = await buildUnilevelTree(rootCode);
@@ -440,11 +508,12 @@ onAuthStateChanged(auth, async (user) => {
           const token = await auth.currentUser.getIdToken();
           const resp = await fetch("/.netlify/functions/confirm-order", {
             method: "POST",
-            headers: { "Authorization": "Bearer " + token },
+            headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
             body: JSON.stringify({ orderId, action: "confirm" })
           });
           const data = await resp.json();
           alert(data.message || "Orden confirmada");
+          // REFRESH: reconstruir árbol y leer puntos desde Firestore (NO escribir)
           await refreshTreeAndStats(rootCode, user.uid);
         } catch (err) {
           console.error(err);
