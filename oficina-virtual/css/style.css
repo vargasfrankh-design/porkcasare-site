@@ -210,8 +210,9 @@ body {
 .product-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 20px;
-  margin-top: 12px;
+  row-gap: 30px;     /* espacio vertical entre filas */
+  column-gap: 20px;  /* espacio horizontal */
+  margin-top: 16px;
 }
 
 .product-card {
@@ -235,4 +236,3 @@ body {
   border-radius: 6px;
   margin-bottom: 10px;
 }
-
