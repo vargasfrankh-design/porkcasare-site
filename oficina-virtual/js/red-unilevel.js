@@ -166,20 +166,145 @@ async function persistTeamPointsSafely(userId) {
   }
 }
 
-/* -------------------- RENDER DEL ÁRBOL -------------------- */
+/* -------------------- RENDER DEL ÁRBOL (D3 + viewBox + iOS repaint hack) -------------------- */
 
+/**
+ * renderTree(rootNode)
+ * - Usa d3.hierarchy + d3.tree para layout.
+ * - Crea svg con viewBox para mejor compatibilidad móvil.
+ * - Forza repintado en iOS Safari para evitar canvas en blanco.
+ *
+ * Nota: requiere que D3 esté disponible globalmente (en tu index tienes <script src="https://d3js.org/d3.v7.min.js"></script>)
+ */
 function renderTree(rootNode) {
   const treeWrap = document.getElementById("treeWrap");
   clearElement(treeWrap);
   if (!rootNode) return;
 
+  // Preferir la instancia global de d3 (script en index)
+  const d3g = (typeof window !== 'undefined' && window.d3) ? window.d3 : (typeof d3 !== 'undefined' ? d3 : null);
+  if (!d3g) {
+    // Si no hay d3, caemos a implementación SVG simple (fallback)
+    renderTreeFallback(rootNode);
+    return;
+  }
+
+  // dimensiones del contenedor
+  const contW = Math.max(treeWrap.clientWidth || 800, 600);
+  const contH = Math.max(treeWrap.clientHeight || 600, 400);
+  const margin = { top: 20, right: 20, bottom: 20, left: 20 };
+  const width = contW - margin.left - margin.right;
+  const height = contH - margin.top - margin.bottom;
+
+  // crear svg responsivo
+  const svg = d3g.select(treeWrap)
+    .append("svg")
+    .attr("viewBox", `0 0 ${contW} ${contH}`)
+    .attr("preserveAspectRatio", "xMidYMin meet")
+    .style("width", "100%")
+    .style("height", "100%")
+    .style("display", "block")
+    .style("touch-action", "manipulation")
+    .style("-webkit-transform", "translateZ(0)")
+    .style("transform", "translateZ(0)");
+
+  const g = svg.append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
+
+  // convertir a d3.hierarchy
+  // d3 espera children en 'children'
+  const root = d3g.hierarchy(rootNode, d => d.children || []);
+  const treeLayout = d3g.tree().size([width, height - 40]); // espacio vertical
+  treeLayout(root);
+
+  // enlaces (curvos)
+  const link = g.selectAll(".link")
+    .data(root.links())
+    .enter()
+    .append("path")
+    .attr("class", "link-line")
+    .attr("d", d => {
+      // path cúbico vertical
+      const sx = d.source.x;
+      const sy = d.source.y;
+      const tx = d.target.x;
+      const ty = d.target.y;
+      const mx = (sx + tx) / 2;
+      return `M${sx},${sy + 30} C ${sx},${(sy + ty) / 2} ${tx},${(sy + ty) / 2} ${tx},${ty - 30}`;
+    })
+    .attr("fill", "none")
+    .attr("stroke", "#d0d0d0");
+
+  // nodos
+  const node = g.selectAll(".node")
+    .data(root.descendants())
+    .enter()
+    .append("g")
+    .attr("class", d => "node depth-" + d.depth)
+    .attr("transform", d => `translate(${d.x},${d.y})`)
+    .style("cursor", "pointer")
+    .style("touch-action", "manipulation");
+
+  // area de toque (hit)
+  node.append("circle")
+    .attr("r", 40)
+    .attr("fill", "transparent")
+    .attr("pointer-events", "auto");
+
+  // círculo visible
+  node.append("circle")
+    .attr("r", 30)
+    .attr("fill", d => (d.data.usuario === rootNode.usuario ? "#2b9df3" : d.data.active ? "#28a745" : "#bfbfbf"))
+    .attr("stroke", "#ffffff")
+    .attr("stroke-width", 3)
+    .attr("pointer-events", "none");
+
+  // texto
+  node.append("text")
+    .attr("y", 6)
+    .attr("text-anchor", "middle")
+    .attr("fill", "#fff")
+    .style("font-size", "12px")
+    .text(d => (d.data.usuario || "").length > 12 ? d.data.usuario.slice(0, 10) + "…" : d.data.usuario || "");
+
+  // handlers: pointerup + click fallback
+  node.each(function(d) {
+    const thisNode = d3g.select(this);
+    const dom = thisNode.node();
+    const handle = (e) => {
+      try { e.preventDefault(); } catch (err) {}
+      try { e.stopPropagation(); } catch (err) {}
+      // Llamar a showInfoCard con el objeto de datos
+      showInfoCard(d.data, e);
+    };
+    dom.addEventListener('pointerup', handle);
+    dom.addEventListener('click', handle);
+  });
+
+  // Forzar repaint en iOS Safari: micro reflow
+  try {
+    svg.node().getBoundingClientRect();
+    svg.style("display", "none");
+    requestAnimationFrame(() => {
+      svg.style("display", "block");
+      try { window.scrollBy(0, 0); } catch (e) {}
+    });
+  } catch (err) {
+    // ignore
+  }
+}
+
+/* Fallback simple si D3 no está disponible (mantiene comportamiento anterior) */
+function renderTreeFallback(rootNode) {
+  const treeWrap = document.getElementById("treeWrap");
+  clearElement(treeWrap);
+  if (!rootNode) return;
   const svgNS = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(svgNS, "svg");
   svg.setAttribute("width", "100%");
   svg.setAttribute("height", "600");
   treeWrap.appendChild(svg);
 
-  // Recolectar niveles
   const levels = [];
   (function collect(node, depth = 0) {
     if (!levels[depth]) levels[depth] = [];
@@ -187,7 +312,6 @@ function renderTree(rootNode) {
     (node.children || []).forEach(c => collect(c, depth + 1));
   })(rootNode);
 
-  // Calcular posiciones
   const nodePos = new Map();
   levels.forEach((lv, iy) => {
     lv.forEach((node, ix) => {
@@ -197,7 +321,6 @@ function renderTree(rootNode) {
     });
   });
 
-  // Dibujar enlaces
   levels.forEach((lv, iy) => {
     if (iy === 0) return;
     lv.forEach(child => {
@@ -216,7 +339,6 @@ function renderTree(rootNode) {
     });
   });
 
-  // Dibujar nodos
   nodePos.forEach(({ x, y, node }) => {
     const g = document.createElementNS(svgNS, "g");
     g.setAttribute("transform", `translate(${x},${y})`);
@@ -225,7 +347,6 @@ function renderTree(rootNode) {
     g.style.touchAction = "manipulation";
     g.style.webkitTapHighlightColor = "transparent";
 
-    // Area de toque ampliada
     const hit = document.createElementNS(svgNS, "circle");
     hit.setAttribute("r", 40);
     hit.setAttribute("fill", "transparent");
@@ -255,11 +376,20 @@ function renderTree(rootNode) {
       showInfoCard(node, e);
     };
 
-    // NOTA: no usamos passive:true porque queremos poder preventDefault()
     g.addEventListener("pointerup", handleSelect);
     g.addEventListener("click", handleSelect);
     svg.appendChild(g);
   });
+
+  // Forzar repintado
+  try {
+    svg.getBoundingClientRect();
+    svg.style.display = "none";
+    requestAnimationFrame(() => {
+      svg.style.display = "block";
+      try { window.scrollBy(0,0); } catch(e){}
+    });
+  } catch (e) {}
 }
 
 /* -------------------- INFO CARD -------------------- */
