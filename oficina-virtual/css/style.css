@@ -210,9 +210,8 @@ body {
 .product-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  row-gap: 30px;     /* espacio vertical entre filas */
-  column-gap: 20px;  /* espacio horizontal */
-  margin-top: 16px;
+  gap: 20px;
+  margin-top: 12px;
 }
 
 .product-card {
@@ -225,9 +224,7 @@ body {
   transition: transform 0.18s;
 }
 
-.product-card:hover {
-  transform: translateY(-4px);
-}
+.product-card:hover { transform: translateY(-4px); }
 
 .product-card img {
   width: 100%;
