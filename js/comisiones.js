@@ -1,37 +1,27 @@
-// js/comisiones.js
-// Usa auth & db ya inicializados en tu módulo firebase-config.js
-// Asegúrate de que existe: export { auth, db } from './firebase-config.js'
+// comisiones_reparado.js
+// Repaired/completed version of js/comisiones.js
+// Asegúrate de que la ruta a firebase-config.js es correcta en tu proyecto (ej. /src/firebase-config.js)
+// Nota: incluye console.log para verificar carga.
+console.log("comisiones_reparado.js cargado");
 
-// Firestore / Auth helpers (v10)
+// IMPORTS (ajusta versiones si necesitas)
 import {
-  doc,
-  getDoc,
-  onSnapshot,
-  runTransaction,
-  collection,
-  addDoc,
-  serverTimestamp,
-  updateDoc,
-  query,
-  orderBy,
-  limit
+  doc, getDoc, onSnapshot, runTransaction, collection, addDoc, serverTimestamp,
+  updateDoc, query, orderBy, limit
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { auth, db } from "/src/firebase-config.js"; // asegúrate de que la ruta coincide
 
-// IMPORTA tus instancias ya inicializadas (ajusta la ruta si tu archivo está en otra carpeta)
-import { auth, db } from "/src/firebase-config.js"; // <-- si tu archivo se llama distinto, cámbialo
-
-// -------- Elementos DOM (de tu index.html) --------
+// DOM elements (asegúrate de que existen en el HTML)
 const elTotal = document.getElementById("totalCommissions");
 const elPending = document.getElementById("pendingCommissions");
 const elWallet = document.getElementById("walletBalance");
 const btnCobrar = document.getElementById("btnCobrar");
 const lastTxInfo = document.getElementById("lastTxInfo");
-const refInput = document.getElementById("refCode");
 const historyEl = document.getElementById("history");
 
-// -------- Utilidades --------
+// Utilidades
 function formatCurrency(amount = 0) {
   try {
     return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 })
@@ -41,45 +31,48 @@ function formatCurrency(amount = 0) {
   }
 }
 
-function showCommissionsUI({ total = 0, pending = 0, wallet = 0 } = {}) {
-  if (elTotal) elTotal.textContent = formatCurrency(total);
-  if (elPending) {
-    elPending.textContent = formatCurrency(pending);
-    elPending.classList.toggle("pending", pending > 0);
+// Render simple del historial (puedes adaptar diseño)
+function renderHistory(txs = []) {
+  if (!historyEl) return;
+  if (!txs.length) {
+    historyEl.innerHTML = '<div class="history-empty">No hay transacciones aún.</div>';
+    return;
   }
-  if (elWallet) elWallet.textContent = formatCurrency(wallet);
+  historyEl.innerHTML = txs.map(tx => {
+    const ts = tx.timestamp && tx.timestamp.toDate ? tx.timestamp.toDate() : (tx.timestamp ? new Date(tx.timestamp) : new Date());
+    const when = ts.toLocaleString();
+    if (tx.type === "earning") {
+      return `<div class="entry"><div><strong>+ ${formatCurrency(tx.amount)}</strong></div><div class="muted">${when}${tx.meta?.action ? ' • ' + tx.meta.action : ''}</div></div>`;
+    } else if (tx.type === "withdraw") {
+      return `<div class="entry"><div><strong>- ${formatCurrency(tx.amount)}</strong></div><div class="muted">${when}${tx.note ? ' • ' + tx.note : ''}</div></div>`;
+    } else {
+      return `<div class="entry"><div><strong>${formatCurrency(tx.amount)} — ${tx.type}</strong></div><div class="muted">${when}</div></div>`;
+    }
+  }).join("");
 }
 
-// -------- Firestore listeners & helpers --------
+// Subscribir datos en tiempo real del usuario
 let unsubscribeUserDoc = null;
 let unsubscribeTxs = null;
-
-function attachRealtimeUserAndTransactions(uid) {
-  const userRef = doc(db, "usuarios", uid);
-
-  // user doc listener
+function attachRealtimeForUser(uid) {
+  if (!uid) return;
+  // user doc
   if (unsubscribeUserDoc) { try { unsubscribeUserDoc(); } catch {} unsubscribeUserDoc = null; }
-  unsubscribeUserDoc = onSnapshot(userRef, (snap) => {
-    if (!snap.exists()) {
-      // No existe: inicializamos (función inicializadora hará set/merge)
-      initializeUserDoc(uid).catch(console.error);
-      showCommissionsUI({ total: 0, pending: 0, wallet: 0 });
-      return;
-    }
-    const d = snap.data();
-    const pending = Number(d.balance ?? 0);
-    // totalCommissions debe reflejar todo lo generado históricamente
-    const total = d.totalCommissions !== undefined ? Number(d.totalCommissions) : pending;
-    const wallet = Number(d.walletBalance ?? 0);
-    if (refInput && d.referralLink) refInput.value = d.referralLink;
-    showCommissionsUI({ total, pending, wallet });
+  const uRef = doc(db, "usuarios", uid);
+  unsubscribeUserDoc = onSnapshot(uRef, (snap) => {
+    const data = snap.exists() ? snap.data() : {};
+    const pending = Number(data.balance ?? 0);
+    const total = Number(data.totalCommissions ?? pending);
+    const wallet = Number(data.walletBalance ?? 0);
+    if (elPending) elPending.textContent = formatCurrency(pending);
+    if (elTotal) elTotal.textContent = formatCurrency(total);
+    if (elWallet) elWallet.textContent = formatCurrency(wallet);
   }, (err) => console.error("user onSnapshot error:", err));
 
   // transactions listener (últimos 50)
   if (unsubscribeTxs) { try { unsubscribeTxs(); } catch {} unsubscribeTxs = null; }
   const txCol = collection(db, "usuarios", uid, "transactions");
   const txQ = query(txCol, orderBy("timestamp", "desc"), limit(50));
-  console.log("attachRealtime for uid:", uid, "path: usuarios/" + uid + "/transactions");
   unsubscribeTxs = onSnapshot(txQ, (snap) => {
     const txs = [];
     snap.forEach(docSnap => txs.push({ id: docSnap.id, ...docSnap.data() }));
@@ -87,13 +80,13 @@ function attachRealtimeUserAndTransactions(uid) {
   }, (err) => console.error("transactions onSnapshot error:", err));
 }
 
+// Asegurarse de que el doc de usuario tiene campos básicos
 async function initializeUserDoc(uid) {
   const uRef = doc(db, "usuarios", uid);
   try {
     await runTransaction(db, async (tx) => {
       const s = await tx.get(uRef);
       if (!s.exists()) {
-        // creamos con merge para no borrar otros campos si se crean en paralelo
         tx.set(uRef, { balance: 0, totalCommissions: 0, walletBalance: 0, createdAt: serverTimestamp() }, { merge: true });
       } else {
         const data = s.data();
@@ -105,38 +98,12 @@ async function initializeUserDoc(uid) {
       }
     });
   } catch (e) {
-    // fallback: intentar set con merge si runTransaction falla
-    console.warn("initializeUserDoc transaction failed, attempting fallback set", e);
-    try {
-      await updateDoc(uRef, {}); // intenta update (no rompe si ya existe)
-    } catch (_) {
-      // si update falla (doc no existe), crearlo con set merge
-      try { await (async () => { const mod = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js"); await mod.setDoc ? mod.setDoc(uRef, { balance: 0, totalCommissions: 0, walletBalance: 0, createdAt: serverTimestamp() }, { merge: true }) : null; })(); } catch (e2) {
-        // simpler fallback: use add/update via updateDoc won't work without import, but no-op here
-        console.warn("fallback create failed", e2);
-      }
-    }
+    console.warn("initializeUserDoc transaction failed:", e);
+    // no fatal, pero sería bueno revisar consola si esto ocurre
   }
 }
 
-// helper seguro getDoc (evita crash si import faltante)
-// Nota: conservamos getDoc import inicial pero este helper intenta import dinámico si hace falta
-async function getDocSafe(ref) {
-  try {
-    // si getDoc ya está disponible arriba, podemos usarlo
-    return await getDoc(ref);
-  } catch (e) {
-    try {
-      const mod = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
-      return await mod.getDoc(ref);
-    } catch (e2) {
-      console.warn("getDocSafe failed", e2);
-      return null;
-    }
-  }
-}
-
-// -------- Registrar earning (usar cuando generes comisiones) --------
+// Registrar earning (ej. cuando generas comisiones)
 async function addEarnings(uid, amount = 0, meta = {}) {
   if (!uid) throw new Error("Usuario no autenticado");
   amount = Number(amount);
@@ -152,33 +119,31 @@ async function addEarnings(uid, amount = 0, meta = {}) {
     const oldTotal = Number(data.totalCommissions ?? 0);
     const newBalance = oldBalance + amount;
     const newTotal = oldTotal + amount;
-
-    // usar set con merge para crear o actualizar
     tx.set(uRef, { balance: newBalance, totalCommissions: newTotal }, { merge: true });
     txResult = { newBalance, newTotal };
   });
 
-  // registrar transacción (incluimos ownerUid para corresponder a reglas)
   try {
     const txCol = collection(db, "usuarios", uid, "transactions");
     await addDoc(txCol, {
       type: "earning",
       amount,
-      meta: meta || {},
       timestamp: serverTimestamp(),
+      meta,
       ownerUid: uid
     });
-  } catch (err) {
-    console.warn("addEarnings: registrar transaction falló", err);
+  } catch (e) {
+    console.error("addEarnings addDoc error:", e);
+    throw e;
   }
-
   return txResult;
 }
 
-// -------- Cobrar (balance -> walletBalance) --------
+// Cobrar balance pendiente -> mueve a wallet / registra withdraw
 async function cobrarPending(uid, amount = null) {
   if (!uid) throw new Error("Usuario no autenticado");
 
+  // Confirmación opcional con SweetAlert si está disponible
   if (window.Swal) {
     const res = await Swal.fire({
       title: "¿Deseas cobrar ahora?",
@@ -208,7 +173,6 @@ async function cobrarPending(uid, amount = null) {
     result = { withdrawn: toWithdraw, newBalance, newWallet };
   });
 
-  // registrar withdraw (incluimos ownerUid)
   try {
     const txCol = collection(db, "usuarios", uid, "transactions");
     await addDoc(txCol, {
@@ -219,60 +183,42 @@ async function cobrarPending(uid, amount = null) {
       ownerUid: uid
     });
   } catch (err) {
-    console.warn("cobrarPending: registrar withdraw falló", err);
+    console.error("cobrarPending addDoc error:", err);
+    throw err;
   }
 
-  if (window.Swal) Swal.fire("¡Hecho!", `Se transfirieron ${formatCurrency(result.withdrawn)} a tu balance.`, "success");
+  if (window.Swal) Swal.fire("¡Hecho!", `Se transfirieron ${formatCurrency(result.withdrawn)} a tu wallet.`, "success");
   return result;
 }
 
-// -------- Render historial --------
-function renderHistory(txs = []) {
-  if (!historyEl) return;
-  if (!txs.length) {
-    historyEl.innerHTML = '<div class="history-empty">No hay transacciones aún.</div>';
-    return;
-  }
-  historyEl.innerHTML = txs.map(tx => {
-    const date = tx.timestamp && tx.timestamp.toDate ? tx.timestamp.toDate() : (tx.timestamp ? new Date(tx.timestamp) : new Date());
-    const when = date.toLocaleString();
-    if (tx.type === "earning") {
-      return `<div class="entry"><div><strong>+ ${formatCurrency(tx.amount)}</strong> — Comisión</div><div class="muted">${when}${tx.meta?.action ? ' • ' + tx.meta.action : ''}</div></div>`;
-    } else if (tx.type === "withdraw") {
-      return `<div class="entry"><div><strong>- ${formatCurrency(tx.amount)}</strong> — Cobro</div><div class="muted">${when}${tx.note ? ' • ' + tx.note : ''}</div></div>`;
-    } else {
-      return `<div class="entry"><div><strong>${formatCurrency(tx.amount)}</strong> — ${tx.type}</div><div class="muted">${when}</div></div>`;
-    }
-  }).join("");
-}
-
-// -------- Auth hookup (usa tu auth exportado) --------
+// Hook auth
 onAuthStateChanged(auth, async (user) => {
-  // limpiar listeners previos
-  if (unsubscribeUserDoc) { try { unsubscribeUserDoc(); } catch {} unsubscribeUserDoc = null; }
-  if (unsubscribeTxs) { try { unsubscribeTxs(); } catch {} unsubscribeTxs = null; }
-
   if (!user) {
-    showCommissionsUI({ total: 0, pending: 0, wallet: 0 });
-    if (btnCobrar) { btnCobrar.disabled = true; btnCobrar.textContent = "Cobrar"; }
-    if (historyEl) historyEl.innerHTML = '<div class="history-empty">Inicia sesión para ver historial.</div>';
+    // usuario no autenticado: desactivar botón
+    if (btnCobrar) btnCobrar.disabled = true;
+    if (unsubscribeUserDoc) { try { unsubscribeUserDoc(); } catch {} unsubscribeUserDoc = null; }
+    if (unsubscribeTxs) { try { unsubscribeTxs(); } catch {} unsubscribeTxs = null; }
     return;
   }
-
   const uid = user.uid;
-  await initializeUserDoc(uid).catch(console.error);
-  attachRealtimeUserAndTransactions(uid);
+  // inicializar doc por si no existe
+  await initializeUserDoc(uid);
+  attachRealtimeForUser(uid);
 
-  // configurar botón Cobrar (evitar listeners duplicados)
+  // conectar botón cobrar
   if (btnCobrar) {
-    btnCobrar.disabled = false;
-    btnCobrar.textContent = "Cobrar";
     const newBtn = btnCobrar.cloneNode(true);
     btnCobrar.parentNode.replaceChild(newBtn, btnCobrar);
+    newBtn.disabled = false;
     newBtn.addEventListener("click", async () => {
       newBtn.disabled = true;
       newBtn.textContent = "Procesando...";
-      try { await cobrarPending(uid); } catch (e) { console.error(e); } finally {
+      try {
+        await cobrarPending(uid);
+      } catch (e) {
+        console.error("Error cobrando:", e);
+        if (window.Swal) Swal.fire("Error", e.message || "Error al cobrar", "error");
+      } finally {
         newBtn.disabled = false;
         newBtn.textContent = "Cobrar";
       }
@@ -280,5 +226,5 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// -------- Exports (para poder usar addEarnings desde otros módulos) --------
+// Exporta funciones si quieres usarlas desde otros módulos
 export { addEarnings, cobrarPending, initializeUserDoc, formatCurrency };
