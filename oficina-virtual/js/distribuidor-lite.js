@@ -134,23 +134,79 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       // --- Historial ---
-      const historyWrap = document.getElementById("historyWrap");
-      if (historyWrap) {
-        const history = Array.isArray(userData.history) ? userData.history : [];
-        historyWrap.innerHTML = "";
-        history.slice().reverse().forEach(h => {
-          const li = document.createElement("div");
-          li.className = "hist-item";
-          const actionTxt = h?.action || "";
-          const pointsTxt = h?.points ? (h.points + " pts") : "";
-          const amountTxt = h?.amount ? ("$" + h.amount) : "";
-          const dateTxt = h?.date ? new Date(h.date).toLocaleString() : "";
-          li.innerHTML = `<div class="hist-action">${escapeHtml(actionTxt)}</div>
-                          <div class="hist-info">${escapeHtml(pointsTxt)} ${escapeHtml(amountTxt)}</div>
-                          <div class="hist-date">${escapeHtml(dateTxt)}</div>`;
-          historyWrap.appendChild(li);
-        });
-      }
+let historyWrap = document.getElementById("historyWrap")
+               || document.getElementById("history")
+               || document.querySelector(".historyWrap")
+               || document.querySelector(".history-list");
+
+// crear contenedor si no existe
+if (!historyWrap) {
+  const userInfo = document.querySelector('.user-info') || document.querySelector('.container') || document.body;
+  if (userInfo) {
+    historyWrap = document.createElement('div');
+    historyWrap.id = 'historyWrap';
+    historyWrap.className = 'history-wrap';
+    const hTitle = document.createElement('h3');
+    hTitle.textContent = 'Historial';
+    historyWrap.appendChild(hTitle);
+    userInfo.appendChild(historyWrap);
+  }
+}
+
+if (historyWrap) {
+  // compatibilidad con diferentes nombres
+  const rawHistory = Array.isArray(userData?.history) ? userData.history
+                    : (Array.isArray(userData?.historial) ? userData.historial : []);
+  // clonar y ordenar por fecha descendente (más reciente primero)
+  const history = rawHistory.slice().sort((a, b) => {
+    const ta = new Date(a?.date || a?.fecha || a?.createdAt || 0).getTime() || 0;
+    const tb = new Date(b?.date || b?.fecha || b?.createdAt || 0).getTime() || 0;
+    return tb - ta;
+  });
+
+  historyWrap.innerHTML = "";
+
+  if (history.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'hist-empty';
+    empty.textContent = 'No hay registros.';
+    historyWrap.appendChild(empty);
+  } else {
+    // formateadores (miles y fecha)
+    const fmtNumber = new Intl.NumberFormat('es-CO');
+    history.forEach(h => {
+      const li = document.createElement("div");
+      li.className = "hist-item";
+
+      const actionTxt  = h?.action || h?.tipo || "";
+      const pointsVal  = (h?.points ?? h?.puntos ?? null);
+      const pointsTxt  = (pointsVal !== null && pointsVal !== undefined) ? (`${pointsVal} pts`) : "";
+      const amountVal  = (h?.amount ?? h?.monto ?? null);
+      const amountTxt  = (amountVal !== null && amountVal !== undefined) ? (`$${fmtNumber.format(Number(amountVal))}`) : "";
+      const dateVal    = h?.date || h?.fecha || h?.createdAt || null;
+      const dateTxt    = dateVal ? new Date(dateVal).toLocaleString() : "";
+      const orderId    = h?.orderId || h?.orderID || h?.id || "";
+
+      li.innerHTML = `
+        <div class="hist-row">
+          <div class="hist-left">
+            <div class="hist-action">${escapeHtml(actionTxt)}</div>
+            <div class="hist-info">${escapeHtml(pointsTxt)} ${escapeHtml(amountTxt)}</div>
+          </div>
+          <div class="hist-right">
+            <div class="hist-date">${escapeHtml(dateTxt)}</div>
+            ${ orderId ? `<div class="hist-orderid">ID: ${escapeHtml(orderId)}</div>` : "" }
+          </div>
+        </div>
+      `;
+
+      historyWrap.appendChild(li);
+    });
+  }
+} else {
+  console.warn('No se encontró (ni se pudo crear) el elemento historyWrap para renderizar el historial.');
+}
+
 
       // --- Mostrar puntos actuales (puntos personales) ---
       // Preferir personalPoints si existe, fallback a puntos (compatibilidad)
