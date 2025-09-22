@@ -236,13 +236,14 @@ function renderTree(rootNode) {
   const nodePos = new Map();
   levels.forEach((lv, iy) => {
     lv.forEach((node, ix) => {
+      // centrar en caso de un solo elemento y distribuir cuando hay varios
       const x = lv.length === 1 ? 500 : (ix + 1) * (1000 / (lv.length + 1));
       const y = 60 + iy * 110;
       nodePos.set(node.usuario + ":" + (node.id || ""), { x, y, node });
     });
   });
 
-  // Enlaces
+  // Enlaces (paths)
   levels.forEach((lv, iy) => {
     if (iy === 0) return;
     lv.forEach(child => {
@@ -261,20 +262,30 @@ function renderTree(rootNode) {
     });
   });
 
-    // Nodos
+  // Nodos
   nodePos.forEach(({ x, y, node }) => {
     const g = document.createElementNS(svgNS, "g");
     g.setAttribute("transform", `translate(${x},${y})`);
     g.setAttribute("data-usuario", node.usuario || "");
+    // mejorar interacción en móvil
     g.style.cursor = "pointer";
     g.style.touchAction = "manipulation";
     g.style.webkitTapHighlightColor = "transparent";
+
+    // Hit area (ampliar target táctil) - invisible pero captura eventos
+    const hit = document.createElementNS(svgNS, "circle");
+    hit.setAttribute("r", 40); // target mayor para dedos
+    hit.setAttribute("fill", "transparent");
+    // dejar pointer-events en auto para que el elemento capture eventos pero no interfiera visualmente
+    hit.setAttribute("pointer-events", "auto");
+    g.appendChild(hit);
 
     const circle = document.createElementNS(svgNS, "circle");
     circle.setAttribute("r", 30);
     circle.setAttribute("fill", node.usuario === rootNode.usuario ? "#2b9df3" : node.active ? "#28a745" : "#bfbfbf");
     circle.setAttribute("stroke", "#ffffff");
     circle.setAttribute("stroke-width", "3");
+    // evitar que el círculo capture directamente el pointer y desvíe event.target; dejamos que el grupo maneje la interacción
     circle.setAttribute("pointer-events", "none");
     g.appendChild(circle);
 
@@ -283,20 +294,26 @@ function renderTree(rootNode) {
     txt.setAttribute("text-anchor", "middle");
     txt.setAttribute("fill", "#fff");
     txt.style.fontSize = "12px";
-    txt.textContent = node.usuario.length > 12 ? node.usuario.slice(0, 10) + "…" : node.usuario;
+    txt.textContent = (node.usuario || "").length > 12 ? node.usuario.slice(0, 10) + "…" : (node.usuario || "");
     txt.setAttribute("pointer-events", "none");
     g.appendChild(txt);
 
+    // Manejo robusto de interacción: pointerup + click como fallback (NO passive:true)
     const handleSelect = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+      // Si el navegador hace gestos, prevenir comportamientos por defecto
+      try { e.preventDefault(); } catch (err) { /* ignore */ }
+      try { e.stopPropagation(); } catch (err) { /* ignore */ }
+      // Llamar al info card con event para poder posicionarla cerca del toque
       showInfoCard(node, e);
     };
-    g.addEventListener('pointerup', handleSelect, { passive: true });
-    g.addEventListener('click', handleSelect, { passive: true });
+    // Usamos pointerup para detectar levantamiento del dedo/ratón. No usamos passive:true porque necesitamos preventDefault()
+    g.addEventListener('pointerup', handleSelect);
+    // fallback por compatibilidad
+    g.addEventListener('click', handleSelect);
 
     svg.appendChild(g);
   });
+}
 
 /* -------------------- INFO CARD -------------------- */
 
@@ -306,18 +323,22 @@ function createInfoCard() {
     el = document.createElement("div");
     el.className = "info-card";
     el.style.position = "fixed";
+    // valores por defecto (se sobreescriben si posicionamos por evento)
     el.style.right = "20px";
     el.style.top = "80px";
+    el.style.left = "auto";
     el.style.padding = "14px";
     el.style.background = "#fff";
     el.style.boxShadow = "0 6px 20px rgba(0,0,0,0.12)";
     el.style.zIndex = 9999;
+    el.style.width = "220px";
+    el.style.borderRadius = "8px";
     el.innerHTML = `
-      <h4 id="ic-name"></h4>
-      <p id="ic-user" class="small"></p>
-      <p><strong>Estado:</strong> <span id="ic-state"></span></p>
-      <p><strong>Puntos:</strong> <span id="ic-points"></span></p>
-      <div style="margin-top:8px">
+      <h4 id="ic-name" style="margin:0 0 8px 0;font-size:16px;"></h4>
+      <p id="ic-user" class="small" style="margin:0 0 8px 0;color:#666;font-size:13px;"></p>
+      <p style="margin:0 0 6px 0;"><strong>Estado:</strong> <span id="ic-state"></span></p>
+      <p style="margin:0 0 6px 0;"><strong>Puntos:</strong> <span id="ic-points"></span></p>
+      <div style="margin-top:8px; text-align:right;">
         <button id="ic-close" class="btn">Cerrar</button>
       </div>
     `;
@@ -328,17 +349,46 @@ function createInfoCard() {
   return el;
 }
 
-function showInfoCard(node) {
+/**
+ * showInfoCard(node, event)
+ * - Acepta event opcional. Si event está presente, posiciona la tarjeta cerca del toque.
+ */
+function showInfoCard(node, event) {
   const el = createInfoCard();
   el.style.display = "block";
   const nameEl = el.querySelector("#ic-name");
   const userEl = el.querySelector("#ic-user");
   const stateEl = el.querySelector("#ic-state");
   const pointsEl = el.querySelector("#ic-points");
-  if (nameEl) nameEl.textContent = node.nombre || node.usuario;
-  if (userEl) userEl.textContent = `Código: ${node.usuario}`;
+  if (nameEl) nameEl.textContent = node.nombre || node.usuario || "";
+  if (userEl) userEl.textContent = `Código: ${node.usuario || ""}`;
   if (stateEl) stateEl.innerHTML = node.active ? '<span style="color:#28a745">Activo</span>' : '<span style="color:#666">Inactivo</span>';
   if (pointsEl) pointsEl.textContent = `${node.puntos || 0} pts`;
+
+  // Si recibimos evento con coordenadas, posicionar la card cerca del toque/click
+  if (event && typeof event.clientX === "number" && typeof event.clientY === "number") {
+    const margin = 8;
+    const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+    const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+    const rectW = el.offsetWidth || 220;
+    const rectH = el.offsetHeight || 140;
+    // Intentamos posicionar a la derecha del toque, y ligeramente arriba (para no tapar el dedo)
+    let left = event.clientX + margin;
+    let top = event.clientY - rectH / 2;
+    // Ajustes para no salirse del viewport
+    if (left + rectW > vw - margin) left = vw - rectW - margin;
+    if (left < margin) left = margin;
+    if (top + rectH > vh - margin) top = vh - rectH - margin;
+    if (top < margin) top = margin;
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
+    el.style.right = "auto";
+  } else {
+    // fallback a la posición por defecto (right/top)
+    el.style.right = "20px";
+    el.style.left = "auto";
+    el.style.top = "80px";
+  }
 }
 
 /* -------------------- LECTURA Y RENDERIZADO SEGURO DE PUNTOS -------------------- */
@@ -457,7 +507,7 @@ onAuthStateChanged(auth, async (user) => {
     elHidden.textContent = personalPoints;
     document.dispatchEvent(new CustomEvent("personalPointsReady", { detail: { personalPoints } }));
 
-    // Mostrar teamPoints: preferir valor persistido; si no existe, calcular solo para mostrar (no persistir)
+    // Mostrar teamPoints: preferir valor persistido; si no existe, calcular solo para mostrar (NO persistir)
     if (typeof d.teamPoints === "number") {
       const tpEl2 = document.getElementById("teamPoints");
       if (tpEl2) tpEl2.textContent = String(d.teamPoints);
