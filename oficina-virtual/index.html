@@ -69,6 +69,20 @@
   </div>
 </div>
 
+        <!-- Bloque wallet y cobrar (añadido para compatibilidad con js/comisiones.js) -->
+<div class="wallet-section" style="margin-top:12px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+  <div style="display:flex; flex-direction:column;">
+    <div style="font-size:0.9rem; color:#555">Saldo en wallet</div>
+    <div id="walletBalance" style="font-weight:700; font-size:1rem;">$0</div>
+  </div>
+
+  <div style="display:flex; gap:8px; align-items:center;">
+    <button id="btnCobrar" class="btn" disabled style="padding:8px 12px; border-radius:8px; cursor:pointer;">Cobrar</button>
+    <div id="lastTxInfo" style="color:#666; font-size:0.9rem;">Última transacción: -</div>
+  </div>
+</div>
+<!-- Fin bloque wallet y cobrar -->
+
         <!-- Link de referido -->
         <div class="history-section">
           <h2>Tu link de referido</h2>
