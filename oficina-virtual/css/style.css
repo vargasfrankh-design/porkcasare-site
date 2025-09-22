@@ -423,3 +423,21 @@ body {
   .comision-item { min-width: 100%; }
   .comision-value { font-size: 16px; }
 }
+
+/* ======== Wallet & Cobrar styles ======== */
+.wallet-section { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:12px; }
+.wallet-section .btn { background: linear-gradient(180deg,#2b7cff,#1b5fd6); color:#fff; border:none; padding:8px 12px; border-radius:8px; font-weight:600; cursor:pointer; box-shadow:0 6px 18px rgba(43,124,255,0.14); transition:transform .08s ease, box-shadow .12s ease, opacity .12s ease; }
+.wallet-section .btn:active { transform:translateY(1px); }
+.wallet-section .btn[disabled] { opacity:0.55; cursor:not-allowed; box-shadow:none; filter:grayscale(0.02); }
+/* small helper text */
+.wallet-section #lastTxInfo { color:#555; font-size:0.92rem; }
+/* tooltip simple */
+.wallet-tooltip { background:#111827; color:#fff; padding:6px 8px; border-radius:6px; font-size:0.85rem; box-shadow:0 6px 16px rgba(2,6,23,0.3); position:absolute; transform:translateY(-8px); white-space:nowrap; z-index:40; }
+.wallet-tooltip.hidden { display:none; }
+/* container relative to position tooltip */
+.wallet-tooltip-wrap { position:relative; display:inline-block; }
+/* responsive tweaks */
+@media (max-width:560px) {
+  .wallet-section { flex-direction:column; align-items:flex-start; }
+  .wallet-tooltip { transform:translateY(-4px); }
+}
