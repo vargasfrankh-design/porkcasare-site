@@ -140,5 +140,50 @@
   <script type="module" src="js/red-unilevel.js"></script>
   <script type="module" src="js/productos.js"></script>
   <script type="module" src="/js/comisiones.js"></script>
+  <script>
+(function(){
+  function setup(){
+    const btn = document.getElementById('btnCobrar');
+    if (!btn) return;
+    // envolver el botón para posicionar tooltip
+    let wrapBtn = btn.parentElement;
+    if (!wrapBtn.classList.contains('wallet-tooltip-wrap')) {
+      const wrapper = document.createElement('span');
+      wrapper.className = 'wallet-tooltip-wrap';
+      wrapBtn.replaceChild(wrapper, btn);
+      wrapper.appendChild(btn);
+      wrapBtn = wrapper;
+    } else {
+      wrapBtn = btn.parentElement;
+    }
+    // crear tooltip
+    let tip = wrapBtn.querySelector('.wallet-tooltip');
+    if (!tip) {
+      tip = document.createElement('div');
+      tip.className = 'wallet-tooltip hidden';
+      tip.textContent = 'No tienes comisiones por cobrar';
+      wrapBtn.appendChild(tip);
+    }
+
+    function updateTooltip(){
+      if (btn.disabled) {
+        tip.classList.remove('hidden');
+      } else {
+        tip.classList.add('hidden');
+      }
+    }
+
+    updateTooltip();
+    const obs = new MutationObserver(() => updateTooltip());
+    obs.observe(btn, { attributes: true, attributeFilter: ['disabled'] });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setup);
+  } else {
+    setup();
+  }
+})();
+</script>
 </body>
 </html>
