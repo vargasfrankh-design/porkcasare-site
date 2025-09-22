@@ -1,13 +1,5 @@
-/**
- * oficina-virtual/js/red-unilevel.js
- * Archivo actualizado y unificado.
- *
- * - Soporta documentos con `patrocinadorId` (doc.id) o `patrocinador` (username).
- * - Normaliza lectura de puntos: `puntos || personalPoints || 0`.
- * - calculateTeamPoints() es solo lectura (no sobrescribe).
- * - persistTeamPointsSafely(userId) opcional para guardar total con transacción (NO llamada automáticamente).
- * - UI: renderTree, info card, onAuthStateChanged y botones.
- */
+/* -------------- oficina-virtual/js/red-unilevel.js -------------- */
+/* Archivo actualizado y unificado */
 
 import { auth, db } from "/src/firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
@@ -24,7 +16,7 @@ import {
 const DEPTH_LIMIT = 6;
 const FIELD_USUARIO = "usuario";
 const FIELD_HISTORY = "history";
-const FIELD_PATROCINADOR_ID = "patrocinadorId"; // se recomienda que contenga doc.id del sponsor
+const FIELD_PATROCINADOR_ID = "patrocinadorId";
 
 /* -------------------- UTILIDADES -------------------- */
 
@@ -49,37 +41,25 @@ function clearElement(el) {
   while (el.firstChild) el.removeChild(el.firstChild);
 }
 
-/* -------------------- HELPERS PARA CONSULTAS FLEXIBLES -------------------- */
+/* -------------------- CONSULTA DE HIJOS -------------------- */
 
-// Utility: getChildrenForParent(node)
-// Tries multiple strategies to find children:
-// 1) patrocinadorId === parentDocId (preferred)
-// 2) patrocinador === parent username (fallback for older docs)
 async function getChildrenForParent(node) {
   const usuariosCol = collection(db, "usuarios");
-  // 1) intentar por patrocinadorId === doc.id
+  // 1) intentar por patrocinadorId (doc id)
   let q = query(usuariosCol, where(FIELD_PATROCINADOR_ID, "==", node.id));
   let snap = await getDocs(q);
   if (!snap.empty) return snap.docs;
-
-  // 2) si no hay resultados, intentar por patrocinador === node.usuario (username/code)
+  // 2) fallback por 'patrocinador' (username)
   if (node.usuario) {
     q = query(usuariosCol, where("patrocinador", "==", node.usuario));
     snap = await getDocs(q);
     if (!snap.empty) return snap.docs;
   }
-
-  // 3) No encontró nada
   return [];
 }
 
 /* -------------------- CONSTRUCCIÓN DEL ÁRBOL -------------------- */
 
-/**
- * buildUnilevelTree(username)
- * - Busca el documento root por `usuario` (username).
- * - Construye recursivamente hasta DEPTH_LIMIT usando estrategias flexibles.
- */
 async function buildUnilevelTree(username) {
   const usuariosCol = collection(db, "usuarios");
   const qRoot = query(usuariosCol, where(FIELD_USUARIO, "==", username));
@@ -98,10 +78,10 @@ async function buildUnilevelTree(username) {
     children: []
   };
 
-  async function addChildrenById(node, level = 1) {
+  async function addChildren(node, level = 1) {
     if (level > DEPTH_LIMIT) return;
     const childDocs = await getChildrenForParent(node);
-    const children = childDocs.map(d => {
+    node.children = childDocs.map(d => {
       const data = d.data();
       return {
         id: d.id,
@@ -113,42 +93,29 @@ async function buildUnilevelTree(username) {
         children: []
       };
     });
-    node.children = children;
-    // recursivamente agregar nietos
-    for (const child of children) {
-      await addChildrenById(child, level + 1);
-    }
+    for (const c of node.children) await addChildren(c, level + 1);
   }
 
-  await addChildrenById(rootNode, 1);
+  await addChildren(rootNode, 1);
   return rootNode;
 }
 
-/* -------------------- PUNTOS PERSONALES -------------------- */
+/* -------------------- PUNTOS -------------------- */
 
 function calculatePersonalPoints(history) {
   let personalPoints = 0;
-  (history || []).forEach(entry => {
-    if (entry?.action && entry.action.startsWith("Compra confirmada")) {
-      personalPoints += Number(entry.points || 0);
-    }
+  (history || []).forEach(e => {
+    if (e?.action?.startsWith("Compra confirmada"))
+      personalPoints += Number(e.points || 0);
   });
   return personalPoints;
 }
 
-/* -------------------- PUNTOS DE EQUIPO -------------------- */
-
-/**
- * calculateTeamPoints(userId)
- * - Calcula la suma de `puntos` de todos los descendientes (no persiste).
- * - Devuelve Number.
- */
 async function calculateTeamPoints(userId) {
-  let totalTeamPoints = 0;
+  let total = 0;
   const queue = [userId];
   const visited = new Set();
   const usuariosCol = collection(db, "usuarios");
-
   while (queue.length) {
     const uid = queue.shift();
     if (visited.has(uid)) continue;
@@ -157,46 +124,32 @@ async function calculateTeamPoints(userId) {
     const q = query(usuariosCol, where(FIELD_PATROCINADOR_ID, "==", uid));
     const snap = await getDocs(q);
 
-    // si no hay hijos por patrocinadorId, intentar fallback por patrocinador == username
     if (snap.empty) {
-      // buscamos usuarios cuyo campo 'patrocinador' sea igual al username del uid
-      // para esto debemos obtener el usuario con id uid y tomar su usuario (username)
       try {
         const parentSnap = await getDoc(doc(db, "usuarios", uid));
         if (parentSnap.exists()) {
-          const parentData = parentSnap.data();
-          const username = parentData?.usuario;
+          const username = parentSnap.data()?.usuario;
           if (username) {
             const q2 = query(usuariosCol, where("patrocinador", "==", username));
             const snap2 = await getDocs(q2);
             snap2.forEach(ds => {
-              const data = ds.data();
-              totalTeamPoints += Number(data.puntos || data.personalPoints || 0);
+              total += Number(ds.data().puntos || ds.data().personalPoints || 0);
               queue.push(ds.id);
             });
             continue;
           }
         }
-      } catch (e) {
-        console.warn("Warning buscando fallback patrocinador por username:", e);
-      }
+      } catch (err) { console.warn("Fallback patrocinador error:", err); }
     }
 
-    snap.forEach(docSnap => {
-      const d = docSnap.data();
-      totalTeamPoints += Number(d.puntos || d.personalPoints || 0);
-      queue.push(docSnap.id);
+    snap.forEach(ds => {
+      total += Number(ds.data().puntos || ds.data().personalPoints || 0);
+      queue.push(ds.id);
     });
   }
-
-  return totalTeamPoints;
+  return total;
 }
 
-/**
- * persistTeamPointsSafely(userId)
- * - Transacción para persistir teamPoints = total calculado.
- * - Usar solo si decides guardar el total recalculado (DEBE ser llamada desde backend o admin endpoint).
- */
 async function persistTeamPointsSafely(userId) {
   const userRef = doc(db, "usuarios", userId);
   try {
@@ -208,42 +161,43 @@ async function persistTeamPointsSafely(userId) {
     });
     return { ok: true, total };
   } catch (err) {
-    console.error("Error persistTeamPointsSafely:", err);
+    console.error("persistTeamPointsSafely:", err);
     return { ok: false, error: err.message || err };
   }
 }
 
-/* -------------------- RENDER ÁRBOL -------------------- */
+/* -------------------- RENDER DEL ÁRBOL -------------------- */
 
 function renderTree(rootNode) {
   const treeWrap = document.getElementById("treeWrap");
   clearElement(treeWrap);
   if (!rootNode) return;
+
   const svgNS = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(svgNS, "svg");
   svg.setAttribute("width", "100%");
   svg.setAttribute("height", "600");
   treeWrap.appendChild(svg);
 
+  // Recolectar niveles
   const levels = [];
-  function gather(node, depth = 0) {
+  (function collect(node, depth = 0) {
     if (!levels[depth]) levels[depth] = [];
     levels[depth].push(node);
-    if (node.children?.length) node.children.forEach(c => gather(c, depth + 1));
-  }
-  gather(rootNode);
+    (node.children || []).forEach(c => collect(c, depth + 1));
+  })(rootNode);
 
+  // Calcular posiciones
   const nodePos = new Map();
   levels.forEach((lv, iy) => {
     lv.forEach((node, ix) => {
-      // centrar en caso de un solo elemento y distribuir cuando hay varios
       const x = lv.length === 1 ? 500 : (ix + 1) * (1000 / (lv.length + 1));
       const y = 60 + iy * 110;
       nodePos.set(node.usuario + ":" + (node.id || ""), { x, y, node });
     });
   });
 
-  // Enlaces (paths)
+  // Dibujar enlaces
   levels.forEach((lv, iy) => {
     if (iy === 0) return;
     lv.forEach(child => {
@@ -262,21 +216,19 @@ function renderTree(rootNode) {
     });
   });
 
-  // Nodos
+  // Dibujar nodos
   nodePos.forEach(({ x, y, node }) => {
     const g = document.createElementNS(svgNS, "g");
     g.setAttribute("transform", `translate(${x},${y})`);
     g.setAttribute("data-usuario", node.usuario || "");
-    // mejorar interacción en móvil
     g.style.cursor = "pointer";
     g.style.touchAction = "manipulation";
     g.style.webkitTapHighlightColor = "transparent";
 
-    // Hit area (ampliar target táctil) - invisible pero captura eventos
+    // Area de toque ampliada
     const hit = document.createElementNS(svgNS, "circle");
-    hit.setAttribute("r", 40); // target mayor para dedos
+    hit.setAttribute("r", 40);
     hit.setAttribute("fill", "transparent");
-    // dejar pointer-events en auto para que el elemento capture eventos pero no interfiera visualmente
     hit.setAttribute("pointer-events", "auto");
     g.appendChild(hit);
 
@@ -285,7 +237,6 @@ function renderTree(rootNode) {
     circle.setAttribute("fill", node.usuario === rootNode.usuario ? "#2b9df3" : node.active ? "#28a745" : "#bfbfbf");
     circle.setAttribute("stroke", "#ffffff");
     circle.setAttribute("stroke-width", "3");
-    // evitar que el círculo capture directamente el pointer y desvíe event.target; dejamos que el grupo maneje la interacción
     circle.setAttribute("pointer-events", "none");
     g.appendChild(circle);
 
@@ -298,19 +249,15 @@ function renderTree(rootNode) {
     txt.setAttribute("pointer-events", "none");
     g.appendChild(txt);
 
-    // Manejo robusto de interacción: pointerup + click como fallback (NO passive:true)
     const handleSelect = (e) => {
-      // Si el navegador hace gestos, prevenir comportamientos por defecto
-      try { e.preventDefault(); } catch (err) { /* ignore */ }
-      try { e.stopPropagation(); } catch (err) { /* ignore */ }
-      // Llamar al info card con event para poder posicionarla cerca del toque
+      try { e.preventDefault(); } catch (err) {}
+      try { e.stopPropagation(); } catch (err) {}
       showInfoCard(node, e);
     };
-    // Usamos pointerup para detectar levantamiento del dedo/ratón. No usamos passive:true porque necesitamos preventDefault()
-    g.addEventListener('pointerup', handleSelect);
-    // fallback por compatibilidad
-    g.addEventListener('click', handleSelect);
 
+    // NOTA: no usamos passive:true porque queremos poder preventDefault()
+    g.addEventListener("pointerup", handleSelect);
+    g.addEventListener("click", handleSelect);
     svg.appendChild(g);
   });
 }
@@ -323,7 +270,6 @@ function createInfoCard() {
     el = document.createElement("div");
     el.className = "info-card";
     el.style.position = "fixed";
-    // valores por defecto (se sobreescriben si posicionamos por evento)
     el.style.right = "20px";
     el.style.top = "80px";
     el.style.left = "auto";
@@ -335,7 +281,7 @@ function createInfoCard() {
     el.style.borderRadius = "8px";
     el.innerHTML = `
       <h4 id="ic-name" style="margin:0 0 8px 0;font-size:16px;"></h4>
-      <p id="ic-user" class="small" style="margin:0 0 8px 0;color:#666;font-size:13px;"></p>
+      <p id="ic-user" style="margin:0 0 8px 0;color:#666;font-size:13px;"></p>
       <p style="margin:0 0 6px 0;"><strong>Estado:</strong> <span id="ic-state"></span></p>
       <p style="margin:0 0 6px 0;"><strong>Puntos:</strong> <span id="ic-points"></span></p>
       <div style="margin-top:8px; text-align:right;">
@@ -349,10 +295,6 @@ function createInfoCard() {
   return el;
 }
 
-/**
- * showInfoCard(node, event)
- * - Acepta event opcional. Si event está presente, posiciona la tarjeta cerca del toque.
- */
 function showInfoCard(node, event) {
   const el = createInfoCard();
   el.style.display = "block";
@@ -365,17 +307,15 @@ function showInfoCard(node, event) {
   if (stateEl) stateEl.innerHTML = node.active ? '<span style="color:#28a745">Activo</span>' : '<span style="color:#666">Inactivo</span>';
   if (pointsEl) pointsEl.textContent = `${node.puntos || 0} pts`;
 
-  // Si recibimos evento con coordenadas, posicionar la card cerca del toque/click
+  // Posicionar cerca del punto tocado si tenemos coords
   if (event && typeof event.clientX === "number" && typeof event.clientY === "number") {
     const margin = 8;
     const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
     const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
     const rectW = el.offsetWidth || 220;
     const rectH = el.offsetHeight || 140;
-    // Intentamos posicionar a la derecha del toque, y ligeramente arriba (para no tapar el dedo)
     let left = event.clientX + margin;
     let top = event.clientY - rectH / 2;
-    // Ajustes para no salirse del viewport
     if (left + rectW > vw - margin) left = vw - rectW - margin;
     if (left < margin) left = margin;
     if (top + rectH > vh - margin) top = vh - rectH - margin;
@@ -384,28 +324,37 @@ function showInfoCard(node, event) {
     el.style.top = `${top}px`;
     el.style.right = "auto";
   } else {
-    // fallback a la posición por defecto (right/top)
     el.style.right = "20px";
     el.style.left = "auto";
     el.style.top = "80px";
   }
 }
 
+/* -------------------- ESTADÍSTICAS -------------------- */
+
+function updateStatsFromTree(tree) {
+  if (!tree) return;
+  let total = 0, activos = 0, inactivos = 0, puntos = 0;
+  (function walk(n) {
+    total++;
+    if (n.active) activos++; else inactivos++;
+    puntos += n.puntos || 0;
+    (n.children || []).forEach(walk);
+  })(tree);
+  const el = document.getElementById("statsInfo");
+  if (el) {
+    el.textContent = `Usuarios: ${total} | Activos: ${activos} | Inactivos: ${inactivos} | Puntos: ${puntos}`;
+  }
+}
+
 /* -------------------- LECTURA Y RENDERIZADO SEGURO DE PUNTOS -------------------- */
 
-/**
- * readAndRenderPoints(userId)
- * - LEE personalPoints/puntos y teamPoints desde Firestore (NO escribe)
- * - Actualiza DOM (#points, #teamPoints, #activationAlert)
- * - Si no existe teamPoints persistido, calcula en memoria para mostrar (NO persiste)
- */
 async function readAndRenderPoints(userId) {
   try {
     if (!userId) return;
     const uRef = doc(db, "usuarios", userId);
     const uSnap = await getDoc(uRef);
     if (!uSnap.exists()) {
-      // limpiar UI si el usuario no existe
       const pointsEl = document.getElementById("points");
       if (pointsEl) pointsEl.textContent = "0";
       const tpEl = document.getElementById("teamPoints");
@@ -415,10 +364,8 @@ async function readAndRenderPoints(userId) {
       return;
     }
     const d = uSnap.data();
-    // Preferir personalPoints, fallback a puntos
     const personal = Number(d.personalPoints ?? d.puntos ?? 0);
 
-    // Preferir teamPoints persistido (si existe). Si no, intentar calcular en memoria SOLO para mostrar.
     let teamPersisted = (typeof d.teamPoints === "number") ? d.teamPoints : null;
     if (teamPersisted === null) {
       try {
@@ -429,7 +376,6 @@ async function readAndRenderPoints(userId) {
       }
     }
 
-    // Actualizar DOM
     const pointsEl = document.getElementById("points");
     if (pointsEl) pointsEl.textContent = String(personal);
 
@@ -445,17 +391,10 @@ async function readAndRenderPoints(userId) {
 
 /* -------------------- REFRESH / UI / AUTH -------------------- */
 
-/**
- * refreshTreeAndStats(rootCode, userId)
- * - Reconstruye árbol y actualiza stats.
- * - NO persiste teamPoints ni personalPoints desde el cliente.
- * - Solo muestra valores leídos/calculados para evitar sobrescrituras.
- */
 async function refreshTreeAndStats(rootCode, userId) {
   const tree = await buildUnilevelTree(rootCode);
   renderTree(tree);
   updateStatsFromTree(tree);
-  // lee y renderiza puntos de forma segura (NO sobrescribe la BD)
   await readAndRenderPoints(userId);
 }
 
@@ -474,7 +413,6 @@ onAuthStateChanged(auth, async (user) => {
     const d = userSnap.data();
     const rootCode = d[FIELD_USUARIO] || d.usuario || "";
 
-    // Datos básicos en UI (comprobaciones seguras)
     const nameEl = document.getElementById("name");
     if (nameEl) nameEl.textContent = d.nombre || "";
 
@@ -484,18 +422,15 @@ onAuthStateChanged(auth, async (user) => {
     const codeEl = document.getElementById("code");
     if (codeEl) codeEl.textContent = rootCode;
 
-    // En lugar de recalcular/persistir, LEEMOS y mostramos lo que está en Firestore
     const pointsEl = document.getElementById("points");
     if (pointsEl) pointsEl.textContent = String(d.personalPoints ?? d.puntos ?? 0);
 
     const refCodeEl = document.getElementById("refCode");
     if (refCodeEl) refCodeEl.value = `${window.location.origin}/registro?ref=${rootCode}`;
 
-    // Mostrar alerta de activación si aplica
     const alertEl = document.getElementById("activationAlert");
     if (alertEl) alertEl.style.display = (Number(d.personalPoints ?? d.puntos ?? 0) < 50 && !d.initialPackBought) ? "block" : "none";
 
-    // Puntos personales (evento) - sigue calculando desde history para compatibilidad de evento
     const personalPoints = calculatePersonalPoints(d[FIELD_HISTORY] || []);
     let elHidden = document.getElementById("personalPointsValue");
     if (!elHidden) {
@@ -507,12 +442,10 @@ onAuthStateChanged(auth, async (user) => {
     elHidden.textContent = personalPoints;
     document.dispatchEvent(new CustomEvent("personalPointsReady", { detail: { personalPoints } }));
 
-    // Mostrar teamPoints: preferir valor persistido; si no existe, calcular solo para mostrar (NO persistir)
     if (typeof d.teamPoints === "number") {
       const tpEl2 = document.getElementById("teamPoints");
       if (tpEl2) tpEl2.textContent = String(d.teamPoints);
     } else {
-      // calcular en memoria y mostrar (NO persistir)
       try {
         const totalTeamPoints = await calculateTeamPoints(user.uid);
         const tpEl2 = document.getElementById("teamPoints");
@@ -522,12 +455,10 @@ onAuthStateChanged(auth, async (user) => {
       }
     }
 
-    // Construir y renderizar árbol
     const tree = await buildUnilevelTree(rootCode);
     renderTree(tree);
     updateStatsFromTree(tree);
 
-    // Botón refresh
     const btnRefresh = document.getElementById("btnRefreshMap");
     if (btnRefresh) {
       btnRefresh.addEventListener("click", async () => {
@@ -535,7 +466,6 @@ onAuthStateChanged(auth, async (user) => {
       });
     }
 
-    // Confirmar orden -> llama función server
     const btnConfirm = document.getElementById("btnConfirmOrder");
     if (btnConfirm) {
       btnConfirm.addEventListener("click", async () => {
@@ -551,7 +481,6 @@ onAuthStateChanged(auth, async (user) => {
           });
           const data = await resp.json();
           alert(data.message || "Orden confirmada");
-          // REFRESH: reconstruir árbol y leer puntos desde Firestore (NO escribir)
           await refreshTreeAndStats(rootCode, user.uid);
         } catch (err) {
           console.error(err);
@@ -560,7 +489,6 @@ onAuthStateChanged(auth, async (user) => {
       });
     }
 
-    // Avatar handling (safe checks)
     const profileImg = document.getElementById("profileImg");
     const avatarGrid = document.querySelector(".avatar-grid");
     const changeAvatarBtn = document.getElementById("changeAvatarBtn");
@@ -586,7 +514,6 @@ onAuthStateChanged(auth, async (user) => {
       });
     }
 
-    // Copy ref
     const copyRefBtn = document.getElementById("copyRef");
     if (copyRefBtn) {
       copyRefBtn.addEventListener("click", () => {
@@ -598,7 +525,6 @@ onAuthStateChanged(auth, async (user) => {
       });
     }
 
-    // Logout
     const logoutBtn = document.getElementById("logoutBtn");
     if (logoutBtn) {
       logoutBtn.addEventListener("click", async () => {
@@ -612,7 +538,6 @@ onAuthStateChanged(auth, async (user) => {
       });
     }
 
-    // Dark mode
     const toggleDarkMode = document.getElementById("toggleDarkMode");
     if (toggleDarkMode) {
       toggleDarkMode.addEventListener("click", () => {
@@ -638,3 +563,4 @@ export {
   persistTeamPointsSafely,
   createInfoCard
 };
+
