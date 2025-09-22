@@ -20,7 +20,7 @@ import {
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
 // IMPORTA tus instancias ya inicializadas (ajusta la ruta si tu archivo está en otra carpeta)
-import { auth, db } from "./firebase.js"; // <-- si tu archivo se llama distinto, cámbialo
+import { auth, db } from "/src/firebase-config.js"; // <-- si tu archivo se llama distinto, cámbialo
 
 // -------- Elementos DOM (de tu index.html) --------
 const elTotal = document.getElementById("totalCommissions");
