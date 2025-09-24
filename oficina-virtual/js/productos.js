@@ -569,7 +569,7 @@ async function onBuyClick(e) {
 
     // Éxito: redirigir a página de éxito (puedes ajustar la ruta)
     alert("✅ Pedido creado correctamente.");
-    window.location.href = `/oficina-virtual/checkout-success.html?orderId=${orderRef.id}`;
+    window.location.href = `/oficina-virtual/index.html?orderId=${encodeURIComponent(orderRef.id)}`;
     return;
   } catch (err) {
     console.error("Error creando la orden:", err);
