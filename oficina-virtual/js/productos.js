@@ -122,6 +122,197 @@ function renderProductos() {
   });
 }
 
+// --- Modal grande para que el cliente edite y confirme sus datos ---
+function showCustomerFormModal(initial = {}) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.background = 'rgba(0,0,0,0.5)';
+    overlay.style.zIndex = '10000';
+    overlay.style.backdropFilter = 'blur(3px)';
+
+    const box = document.createElement('div');
+    box.style.width = 'min(900px, 96%)';
+    box.style.maxHeight = '90vh';
+    box.style.overflow = 'auto';
+    box.style.padding = '22px';
+    box.style.borderRadius = '14px';
+    box.style.boxShadow = '0 18px 50px rgba(0,0,0,0.35)';
+    box.style.background = 'linear-gradient(180deg,#ffffff,#f8fafc)';
+    box.style.fontFamily = 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial';
+
+    const title = document.createElement('h2');
+    title.textContent = 'Completa tus datos para finalizar la compra';
+    title.style.margin = '0 0 10px 0';
+    title.style.fontSize = '20px';
+    title.style.fontWeight = '700';
+    box.appendChild(title);
+
+    const subtitle = document.createElement('p');
+    subtitle.textContent = 'Revisa o edita la información que usaremos para procesar tu pedido.';
+    subtitle.style.margin = '0 0 18px 0';
+    subtitle.style.color = '#374151';
+    box.appendChild(subtitle);
+
+    const form = document.createElement('form');
+    form.style.display = 'grid';
+    form.style.gridTemplateColumns = '1fr 1fr';
+    form.style.gap = '12px';
+
+    const createField = (name, label, value = '', placeholder = '') => {
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+
+      const lab = document.createElement('label');
+      lab.textContent = label;
+      lab.style.fontSize = '13px';
+      lab.style.marginBottom = '6px';
+      lab.style.color = '#111827';
+      wrapper.appendChild(lab);
+
+      const input = document.createElement('input');
+      input.name = name;
+      input.value = value || '';
+      input.placeholder = placeholder;
+      input.style.padding = '10px 12px';
+      input.style.border = '1px solid rgba(15,23,42,0.08)';
+      input.style.borderRadius = '8px';
+      input.style.fontSize = '14px';
+      input.style.outline = 'none';
+      input.addEventListener('focus', () => input.style.boxShadow = '0 6px 18px rgba(16,185,129,0.12)');
+      input.addEventListener('blur', () => input.style.boxShadow = 'none');
+      wrapper.appendChild(input);
+
+      return { wrapper, input };
+    };
+
+    const fNombre = createField('firstName', 'Nombre', initial.firstName || initial.nombre || '', 'Tu nombre');
+    const fApellido = createField('lastName', 'Apellido', initial.lastName || initial.apellido || '', 'Tu apellido');
+    const fEmail = createField('email', 'Correo electrónico', initial.email || '', 'tucorreo@ejemplo.com');
+    const fTelefono = createField('phone', 'Teléfono', initial.phone || initial.telefono || '', '+57 300 0000000');
+    const fDireccion = createField('address', 'Dirección', initial.address || initial.direccion || '', 'Calle, número, barrio');
+    const fCiudad = createField('city', 'Ciudad', initial.city || '', 'Ciudad');
+
+    form.appendChild(fNombre.wrapper);
+    form.appendChild(fApellido.wrapper);
+    form.appendChild(fEmail.wrapper);
+    form.appendChild(fTelefono.wrapper);
+    form.appendChild(fDireccion.wrapper);
+    form.appendChild(fCiudad.wrapper);
+
+    const notasWrapper = document.createElement('div');
+    notasWrapper.style.gridColumn = '1 / -1';
+    const labNotas = document.createElement('label');
+    labNotas.textContent = 'Notas (opcional)';
+    labNotas.style.fontSize = '13px';
+    labNotas.style.marginBottom = '6px';
+    notasWrapper.appendChild(labNotas);
+    const ta = document.createElement('textarea');
+    ta.name = 'notes';
+    ta.placeholder = 'Instrucciones para la entrega, referencia, etc.';
+    ta.value = initial.notes || '';
+    ta.style.minHeight = '84px';
+    ta.style.padding = '10px 12px';
+    ta.style.borderRadius = '8px';
+    ta.style.border = '1px solid rgba(15,23,42,0.08)';
+    ta.style.fontSize = '14px';
+    notasWrapper.appendChild(ta);
+    form.appendChild(notasWrapper);
+
+    box.appendChild(form);
+
+    const buttons = document.createElement('div');
+    buttons.style.display = 'flex';
+    buttons.style.justifyContent = 'flex-end';
+    buttons.style.gap = '10px';
+    buttons.style.marginTop = '16px';
+
+    const btnCancel = document.createElement('button');
+    btnCancel.type = 'button';
+    btnCancel.textContent = 'Cancelar';
+    btnCancel.style.padding = '10px 14px';
+    btnCancel.style.borderRadius = '10px';
+    btnCancel.style.border = '1px solid rgba(15,23,42,0.06)';
+    btnCancel.style.background = 'transparent';
+    btnCancel.style.cursor = 'pointer';
+    btnCancel.addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      resolve(null);
+    });
+
+    const btnConfirm = document.createElement('button');
+    btnConfirm.type = 'button';
+    btnConfirm.textContent = 'Confirmar y pagar (Efectivo/Transferencia)';
+    btnConfirm.style.padding = '10px 16px';
+    btnConfirm.style.border = 'none';
+    btnConfirm.style.borderRadius = '10px';
+    btnConfirm.style.background = 'linear-gradient(90deg,#34D399,#10B981)';
+    btnConfirm.style.color = 'white';
+    btnConfirm.style.cursor = 'pointer';
+    btnConfirm.style.fontWeight = '700';
+
+    btnConfirm.addEventListener('click', () => {
+      const payload = {
+        firstName: fNombre.input.value.trim(),
+        lastName: fApellido.input.value.trim(),
+        email: fEmail.input.value.trim(),
+        phone: fTelefono.input.value.trim(),
+        address: fDireccion.input.value.trim(),
+        city: fCiudad.input.value.trim(),
+        notes: ta.value.trim()
+      };
+
+      if (!payload.firstName) { alert('Por favor ingresa tu nombre.'); fNombre.input.focus(); return; }
+      if (!payload.email || !/\S+@\S+\.\S+/.test(payload.email)) { alert('Por favor ingresa un correo válido.'); fEmail.input.focus(); return; }
+      if (!payload.phone) { alert('Por favor ingresa un teléfono de contacto.'); fTelefono.input.focus(); return; }
+
+      document.body.removeChild(overlay);
+      resolve(payload);
+    });
+
+    buttons.appendChild(btnCancel);
+    buttons.appendChild(btnConfirm);
+    box.appendChild(buttons);
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    setTimeout(() => fNombre.input.focus(), 120);
+  });
+}
+
+async function finalizeOrderWithCustomerData(orderRef, buyerUid) {
+  let initial = {};
+  try {
+    if (buyerUid) {
+      const userDoc = await getDoc(doc(db, 'usuarios', buyerUid));
+      if (userDoc.exists()) initial = userDoc.data();
+    }
+  } catch (err) {
+    console.warn('No se pudo leer perfil del usuario para prefill:', err);
+  }
+
+  const customerData = await showCustomerFormModal(initial);
+  if (!customerData) {
+    // Usuario canceló: no continuar
+    return false;
+  }
+
+  await updateDoc(orderRef, {
+    status: 'pending_cash',
+    buyerInfo: customerData,
+    updatedAt: new Date()
+  });
+
+  window.location.href = `checkout.html?orderId=${orderRef.id}`;
+  return true;
+}
+
 async function onBuyClick(e) {
   if (!auth.currentUser) {
     alert("Debes iniciar sesión para comprar.");
@@ -210,9 +401,13 @@ await new Promise((resolve) => {
   document.body.appendChild(overlay);
 });
 
-// Guardar como si fuera pago en efectivo (estatus y redirección)
-await updateDoc(orderRef, { status: "pending_cash" });
-window.location.href = `checkout.html?orderId=${orderRef.id}`;
+// Abrir modal grande para que el cliente confirme/edite datos y finalizar la orden
+const finalized = await finalizeOrderWithCustomerData(orderRef, buyerUid);
+if (!finalized) {
+  // Si el usuario canceló en el modal grande, detén el flujo (no redirigimos)
+  return;
+}
+
 
   const buyerDoc = await getDoc(doc(db, "usuarios", buyerUid));
   const buyerData = buyerDoc.exists() ? buyerDoc.data() : null;
