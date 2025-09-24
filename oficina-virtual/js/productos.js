@@ -148,32 +148,71 @@ async function onBuyClick(e) {
     initialBonusPaid: false                   // 👈 agregado
   });
 
-  const wantMP = confirm(`¿Cómo deseas pagar?\n\nAceptar = Transferencia/MercadoPago\nCancelar = Efectivo`);
-  
-  if (wantMP) {
-    const res = await fetch("/.netlify/functions/create-preference", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        orderId: orderRef.id,
-        items: [{ title: prod.nombre, unit_price: prod.precio, quantity: 1 }],
-        payerUid: buyerUid
-      })
-    });
+  // Patch: reemplaza el confirm(...) por un modal bonito de un solo botón.
+// Inserta este fragmento justo después de la creación de orderRef en oficina-virtual/js/productos.js
 
-    const data = await res.json();
-    await updateDoc(orderRef, {
-      status: "pending_mp",
-      preferenceId: data.preferenceId || null,
-      mp_init_point: data.init_point || data.sandbox_init_point || null
-    });
+// Mostrar modal bonito con una sola opción ("Efectivo o Transferencia") y un botón Aceptar.
+await new Promise((resolve) => {
+  const overlay = document.createElement('div');
+  overlay.setAttribute('id','payment-modal-overlay');
+  overlay.style.position = 'fixed';
+  overlay.style.inset = '0';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  overlay.style.background = 'rgba(0,0,0,0.45)';
+  overlay.style.zIndex = '9999';
+  overlay.style.backdropFilter = 'blur(2px)';
 
-    if (data.init_point) window.location.href = data.init_point;
-    else if (data.sandbox_init_point) window.location.href = data.sandbox_init_point;
-  } else {
-    await updateDoc(orderRef, { status: "pending_cash" });
-    window.location.href = `checkout.html?orderId=${orderRef.id}`;
-  }
+  const box = document.createElement('div');
+  box.style.maxWidth = '420px';
+  box.style.width = '90%';
+  box.style.padding = '20px';
+  box.style.borderRadius = '12px';
+  box.style.boxShadow = '0 10px 30px rgba(0,0,0,0.25)';
+  box.style.background = 'linear-gradient(180deg, #ffffff, #fbfbfb)';
+  box.style.textAlign = 'center';
+  box.style.fontFamily = 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial';
+
+  const h = document.createElement('h3');
+  h.textContent = 'Confirmar compra';
+  h.style.margin = '0 0 8px 0';
+  h.style.fontSize = '18px';
+  h.style.fontWeight = '700';
+  box.appendChild(h);
+
+  const p = document.createElement('p');
+  p.innerHTML = 'Método de pago: <strong>Efectivo o Transferencia</strong>';
+  p.style.margin = '0 0 18px 0';
+  p.style.fontSize = '14px';
+  p.style.color = '#333';
+  box.appendChild(p);
+
+  const btn = document.createElement('button');
+  btn.textContent = 'Aceptar';
+  btn.style.padding = '10px 18px';
+  btn.style.border = 'none';
+  btn.style.borderRadius = '10px';
+  btn.style.cursor = 'pointer';
+  btn.style.fontWeight = '600';
+  btn.style.boxShadow = '0 6px 16px rgba(0,0,0,0.12)';
+  btn.style.background = 'linear-gradient(90deg,#34D399,#10B981)';
+  btn.style.color = 'white';
+  btn.addEventListener('mouseenter', ()=> btn.style.transform='translateY(-1px)');
+  btn.addEventListener('mouseleave', ()=> btn.style.transform='translateY(0)');
+  btn.addEventListener('click', () => {
+    document.body.removeChild(overlay);
+    resolve();
+  });
+
+  box.appendChild(btn);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+});
+
+// Guardar como si fuera pago en efectivo (estatus y redirección)
+await updateDoc(orderRef, { status: "pending_cash" });
+window.location.href = `checkout.html?orderId=${orderRef.id}`;
 
   const buyerDoc = await getDoc(doc(db, "usuarios", buyerUid));
   const buyerData = buyerDoc.exists() ? buyerDoc.data() : null;
