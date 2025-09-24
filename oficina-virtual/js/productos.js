@@ -281,8 +281,8 @@ function showCustomerFormModal(initial = {}) {
     pickupInfo.style.color = '#111827';
     pickupInfo.innerHTML = `
       <strong>Recoger en oficina:</strong> Puedes recoger tu pedido en nuestra oficina principal.
-      <br>Dirección: Calle 123 #45-67, Ciudad.
-      <br>Horario: Lun-Vie 9:00 - 17:00.
+      <br>Dirección: Carrera 14 #21 04, Ciudad Yopal.
+      <br>Horario: Lun-Sab 7:00 - 17:00.
     `;
     pickupInfo.style.display = 'none';
     box.appendChild(pickupInfo);
