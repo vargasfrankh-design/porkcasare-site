@@ -556,7 +556,7 @@ onAuthStateChanged(auth, async (user) => {
     if (pointsEl) pointsEl.textContent = String(d.personalPoints ?? d.puntos ?? 0);
 
     const refCodeEl = document.getElementById("refCode");
-    if (refCodeEl) refCodeEl.value = `${window.location.origin}/registro?ref=${rootCode}`;
+    if (refCodeEl) refCodeEl.value = `${window.location.origin}/register.html?patrocinador=${encodeURIComponent(rootCode)}`;
 
     const alertEl = document.getElementById("activationAlert");
     if (alertEl) alertEl.style.display = (Number(d.personalPoints ?? d.puntos ?? 0) < 50 && !d.initialPackBought) ? "block" : "none";
