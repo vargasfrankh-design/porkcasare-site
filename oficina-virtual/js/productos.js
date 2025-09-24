@@ -1,4 +1,8 @@
-// oficina-virtual/js/productos.js
+// oficina-virtual/js/productos.js (parcheado)
+// Versión: la creación de orden solo ocurre cuando el usuario confirma en el modal grande.
+// No hay writes en la BD al pulsar 'Aceptar' del modal pequeño ni al cerrar el modal grande.
+// Autor: parche aplicado por asistente
+
 import { auth, db } from "/src/firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
@@ -394,51 +398,6 @@ function showCustomerFormModal(initial = {}) {
   });
 }
 
-async function finalizeOrderWithCustomerData(orderRef, buyerUid) {
-  // Información fija de la oficina (si quieres cambiarla, actualiza aquí)
-  const OFFICE_INFO = {
-    name: 'Oficina PorkCasaRe',
-    address: 'Calle 123 #45-67, Ciudad',
-    hours: 'Lun-Vie 9:00 - 17:00',
-    contact: '+57 300 0000000'
-  };
-
-  let initial = {};
-  try {
-    if (buyerUid) {
-      const userDoc = await getDoc(doc(db, 'usuarios', buyerUid));
-      if (userDoc.exists()) initial = userDoc.data();
-    }
-  } catch (err) {
-    console.warn('No se pudo leer perfil del usuario para prefill:', err);
-  }
-
-  const customerData = await showCustomerFormModal(initial);
-  if (!customerData) {
-    // Usuario canceló: no continuar
-    return false;
-  }
-
-  const toSave = {
-    status: 'pending_cash',
-    buyerInfo: customerData,
-    deliveryMethod: customerData.deliveryMethod || 'home',
-    updatedAt: new Date()
-  };
-
-  if (customerData.deliveryMethod === 'pickup') {
-    toSave.pickupInfo = customerData.pickupLocation || OFFICE_INFO;
-    // Si quieres, puedes sobrescribir buyerInfo.address por la oficina:
-    toSave.buyerInfo.address = toSave.pickupInfo.address;
-    toSave.buyerInfo.city = ''; // opcional
-  }
-
-  await updateDoc(orderRef, toSave);
-
-  window.location.href = `checkout.html?orderId=${orderRef.id}`;
-  return true;
-}
-
 async function onBuyClick(e) {
   if (!auth.currentUser) {
     alert("Debes iniciar sesión para comprar.");
@@ -452,134 +411,171 @@ async function onBuyClick(e) {
 
   const buyerUid = auth.currentUser.uid;
 
-  // 👉 Crear orden en Firestore
-  const orderRef = await addDoc(collection(db, "orders"), {
-    productId: prod.id,
-    productName: prod.nombre,
-    price: prod.precio,
-    points: prod.puntos,
-    buyerUid,
-    status: "pending",
-    createdAt: new Date().toISOString(),
-    isInitial: prod.id === "paquete-inicio",   // 👈 agregado
-    initialBonusPaid: false                   // 👈 agregado
-  });
-
-  // Patch: reemplaza el confirm(...) por un modal bonito de un solo botón.
-// Inserta este fragmento justo después de la creación de orderRef en oficina-virtual/js/productos.js
-
-// Mostrar modal bonito con una sola opción ("Efectivo o Transferencia") y un botón Aceptar.
-await new Promise((resolve) => {
-  const overlay = document.createElement('div');
-  overlay.setAttribute('id','payment-modal-overlay');
-  overlay.style.position = 'fixed';
-  overlay.style.inset = '0';
-  overlay.style.display = 'flex';
-  overlay.style.alignItems = 'center';
-  overlay.style.justifyContent = 'center';
-  overlay.style.background = 'rgba(0,0,0,0.45)';
-  overlay.style.zIndex = '9999';
-  overlay.style.backdropFilter = 'blur(2px)';
-
-  const box = document.createElement('div');
-  box.style.maxWidth = '420px';
-  box.style.width = '90%';
-  box.style.padding = '20px';
-  box.style.borderRadius = '12px';
-  box.style.boxShadow = '0 10px 30px rgba(0,0,0,0.25)';
-  box.style.background = 'linear-gradient(180deg, #ffffff, #fbfbfb)';
-  box.style.textAlign = 'center';
-  box.style.fontFamily = 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial';
-
-  const h = document.createElement('h3');
-  h.textContent = 'Confirmar compra';
-  h.style.margin = '0 0 8px 0';
-  h.style.fontSize = '18px';
-  h.style.fontWeight = '700';
-  box.appendChild(h);
-
-  const p = document.createElement('p');
-  p.innerHTML = 'Método de pago: <strong>Efectivo o Transferencia</strong>';
-  p.style.margin = '0 0 18px 0';
-  p.style.fontSize = '14px';
-  p.style.color = '#333';
-  box.appendChild(p);
-
-  const btn = document.createElement('button');
-  btn.textContent = 'Aceptar';
-  btn.style.padding = '10px 18px';
-  btn.style.border = 'none';
-  btn.style.borderRadius = '10px';
-  btn.style.cursor = 'pointer';
-  btn.style.fontWeight = '600';
-  btn.style.boxShadow = '0 6px 16px rgba(0,0,0,0.12)';
-  btn.style.background = 'linear-gradient(90deg,#34D399,#10B981)';
-  btn.style.color = 'white';
-  btn.addEventListener('mouseenter', ()=> btn.style.transform='translateY(-1px)');
-  btn.addEventListener('mouseleave', ()=> btn.style.transform='translateY(0)');
-  btn.addEventListener('click', () => {
-    document.body.removeChild(overlay);
-    resolve();
-  });
-
-  box.appendChild(btn);
-  overlay.appendChild(box);
-  document.body.appendChild(overlay);
-});
-
-// Abrir modal grande para que el cliente confirme/edite datos y finalizar la orden
-const finalized = await finalizeOrderWithCustomerData(orderRef, buyerUid);
-if (!finalized) {
-  // Si el usuario canceló en el modal grande, detén el flujo (no redirigimos)
-  return;
-}
-
-
-  const buyerDoc = await getDoc(doc(db, "usuarios", buyerUid));
-  const buyerData = buyerDoc.exists() ? buyerDoc.data() : null;
-  const sponsorCode = buyerData ? buyerData.patrocinador : null;
-
-  // Bono rápido (solo paquete inicial)
-  if (prod.id === "paquete-inicio" && sponsorCode) {
-    try {
-      const sponsor = await findUserByUsername(sponsorCode);
-      if (sponsor) {
-        const sponsorRef = doc(db, "usuarios", sponsor.id);
-
-        const fastStartPoints = Math.round(prod.puntos * 0.30);
-        const fastStartValue = fastStartPoints * POINT_VALUE;
-
-        await updateDoc(sponsorRef, {
-          balance: increment(fastStartValue),
-          history: arrayUnion({
-            action: `Bono de inicio rápido por compra de ${buyerData?.usuario || "desconocido"}`,
-            amount: fastStartValue,
-            points: fastStartPoints,
-            orderId: orderRef.id,
-            date: new Date().toISOString()
-          })
-        });
-
-        console.log(`✅ Bono de inicio rápido asignado: ${fastStartValue} COP (${fastStartPoints} pts)`);
-      }
-    } catch (err) {
-      console.error("❌ Error asignando bono de inicio rápido:", err);
-    }
+  // Intentar obtener perfil para prefill (NO crear orden aquí)
+  let initialBuyerProfile = {};
+  try {
+    const userDoc = await getDoc(doc(db, "usuarios", buyerUid));
+    if (userDoc.exists()) initialBuyerProfile = userDoc.data();
+  } catch (err) {
+    console.warn("No se pudo leer perfil del usuario para prefill:", err);
   }
 
-  await distributePointsUpline(sponsorCode, prod.puntos, buyerData?.usuario || "desconocido", orderRef.id);
+  // ---------- Modal pequeño (Aceptar = Efectivo/Transferencia). Solo visual, NO DB ----------
+  await new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.setAttribute('id','payment-modal-overlay');
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.background = 'rgba(0,0,0,0.45)';
+    overlay.style.zIndex = '9999';
+    overlay.style.backdropFilter = 'blur(2px)';
 
-  await updateDoc(doc(db, "usuarios", buyerUid), {
-    history: arrayUnion({
-      action: `Compra ${prod.nombre}`,
-      amount: prod.precio,
-      points: prod.puntos,
-      orderId: orderRef.id,
-      date: new Date().toISOString()
-    })
+    const box = document.createElement('div');
+    box.style.maxWidth = '420px';
+    box.style.width = '90%';
+    box.style.padding = '20px';
+    box.style.borderRadius = '12px';
+    box.style.boxShadow = '0 10px 30px rgba(0,0,0,0.25)';
+    box.style.background = 'linear-gradient(180deg, #ffffff, #fbfbfb)';
+    box.style.textAlign = 'center';
+    box.style.fontFamily = 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial';
+
+    const h = document.createElement('h3');
+    h.textContent = 'Confirmar compra';
+    h.style.margin = '0 0 8px 0';
+    h.style.fontSize = '18px';
+    h.style.fontWeight = '700';
+    box.appendChild(h);
+
+    const p = document.createElement('p');
+    p.innerHTML = 'Método de pago: <strong>Efectivo o Transferencia</strong>';
+    p.style.margin = '0 0 18px 0';
+    p.style.fontSize = '14px';
+    p.style.color = '#333';
+    box.appendChild(p);
+
+    const btn = document.createElement('button');
+    btn.textContent = 'Aceptar';
+    btn.style.padding = '10px 18px';
+    btn.style.border = 'none';
+    btn.style.borderRadius = '10px';
+    btn.style.cursor = 'pointer';
+    btn.style.fontWeight = '600';
+    btn.style.boxShadow = '0 6px 16px rgba(0,0,0,0.12)';
+    btn.style.background = 'linear-gradient(90deg,#34D399,#10B981)';
+    btn.style.color = 'white';
+    btn.addEventListener('mouseenter', ()=> btn.style.transform='translateY(-1px)');
+    btn.addEventListener('mouseleave', ()=> btn.style.transform='translateY(0)');
+    btn.addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      resolve();
+    });
+
+    box.appendChild(btn);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
   });
 
-  console.log("Compra registrada, bono rápido (si aplica) y puntos distribuidos.");
+  // ---------- Modal grande: pedir/editar datos del cliente (devuelve payload o null) ----------
+  const customerData = await showCustomerFormModal(initialBuyerProfile);
+  if (!customerData) {
+    // usuario canceló en modal grande -> NO guardamos nada
+    return;
+  }
+
+  // ---------- Aquí SÍ creamos la orden en Firestore (único punto) ----------
+  try {
+    const orderObj = {
+      productId: prod.id,
+      productName: prod.nombre,
+      price: prod.precio,
+      points: prod.puntos,
+      buyerUid,
+      buyerInfo: customerData,
+      deliveryMethod: customerData.deliveryMethod === 'pickup' ? 'pickup' : 'home',
+      entrega: customerData.deliveryMethod === 'pickup' ? 'oficina' : 'domicilio',
+      direccion: customerData.deliveryMethod === 'pickup' ? null : (customerData.address || null),
+      telefono: customerData.deliveryMethod === 'pickup' ? (customerData.phone || null) : (customerData.phone || null),
+      observaciones: customerData.notes || '',
+      status: "pending_delivery",
+      createdAt: new Date().toISOString(),
+      isInitial: prod.id === "paquete-inicio",
+      initialBonusPaid: false,
+      paymentMethod: "efectivo_transferencia"
+    };
+
+    // Si pickup, añadir pickupInfo
+    if (customerData.deliveryMethod === 'pickup') {
+      orderObj.pickupInfo = customerData.pickupLocation || {
+        name: 'Oficina PorkCasaRe',
+        address: 'Calle 123 #45-67, Ciudad',
+        hours: 'Lun-Vie 9:00 - 17:00'
+      };
+      orderObj.buyerInfo.address = orderObj.pickupInfo.address;
+    }
+
+    // Crear la orden (AQUÍ se crea la doc)
+    const orderRef = await addDoc(collection(db, "orders"), orderObj);
+
+    // ------ Post-procesamiento: bono rápido, distribute points, historial ------
+    try {
+      const buyerDocSnap = await getDoc(doc(db, "usuarios", buyerUid));
+      const buyerData = buyerDocSnap.exists() ? buyerDocSnap.data() : null;
+      const sponsorCode = buyerData ? buyerData.patrocinador : null;
+
+      // Bono rápido si aplica
+      if (prod.id === "paquete-inicio" && sponsorCode) {
+        try {
+          const sponsor = await findUserByUsername(sponsorCode);
+          if (sponsor) {
+            const sponsorRef = doc(db, "usuarios", sponsor.id);
+            const fastStartPoints = Math.round(prod.puntos * 0.30);
+            const fastStartValue = fastStartPoints * POINT_VALUE;
+            await updateDoc(sponsorRef, {
+              balance: increment(fastStartValue),
+              history: arrayUnion({
+                action: `Bono de inicio rápido por compra de ${buyerData?.usuario || "desconocido"}`,
+                amount: fastStartValue,
+                points: fastStartPoints,
+                orderId: orderRef.id,
+                date: new Date().toISOString()
+              })
+            });
+          }
+        } catch (err) {
+          console.error("Error asignando bono de inicio rápido:", err);
+        }
+      }
+
+      // Distribuir puntos a uplines
+      await distributePointsUpline(sponsorCode, prod.puntos, buyerData?.usuario || "desconocido", orderRef.id);
+
+      // Actualizar historial del comprador
+      await updateDoc(doc(db, "usuarios", buyerUid), {
+        history: arrayUnion({
+          action: `Compra ${prod.nombre}`,
+          amount: prod.precio,
+          points: prod.puntos,
+          orderId: orderRef.id,
+          date: new Date().toISOString()
+        })
+      });
+    } catch (err) {
+      console.error("Error en post-procesamiento de la orden:", err);
+    }
+
+    // Éxito: redirigir a página de éxito (puedes ajustar la ruta)
+    alert("✅ Pedido creado correctamente.");
+    window.location.href = `/oficina-virtual/checkout-success.html?orderId=${orderRef.id}`;
+    return;
+  } catch (err) {
+    console.error("Error creando la orden:", err);
+    alert("Ocurrió un error al crear la orden. Intenta de nuevo.");
+    return;
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
