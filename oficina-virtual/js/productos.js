@@ -123,6 +123,7 @@ function renderProductos() {
 }
 
 // --- Modal grande para que el cliente edite y confirme sus datos ---
+// Incluye opción de 'A domicilio' o 'Recoger en oficina'
 function showCustomerFormModal(initial = {}) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
@@ -154,10 +155,54 @@ function showCustomerFormModal(initial = {}) {
 
     const subtitle = document.createElement('p');
     subtitle.textContent = 'Revisa o edita la información que usaremos para procesar tu pedido.';
-    subtitle.style.margin = '0 0 18px 0';
+    subtitle.style.margin = '0 0 12px 0';
     subtitle.style.color = '#374151';
     box.appendChild(subtitle);
 
+    // --- Delivery method radios ---
+    const deliveryWrapper = document.createElement('div');
+    deliveryWrapper.style.display = 'flex';
+    deliveryWrapper.style.alignItems = 'center';
+    deliveryWrapper.style.gap = '12px';
+    deliveryWrapper.style.marginBottom = '12px';
+
+    const labelDM = document.createElement('span');
+    labelDM.textContent = 'Entrega:';
+    labelDM.style.fontWeight = '600';
+    labelDM.style.color = '#111827';
+    deliveryWrapper.appendChild(labelDM);
+
+    const createRadio = (value, text) => {
+      const id = `dm-${value}-${Date.now() + Math.floor(Math.random()*1000)}`;
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'deliveryMethod';
+      radio.value = value;
+      radio.id = id;
+
+      const lab = document.createElement('label');
+      lab.htmlFor = id;
+      lab.textContent = text;
+      lab.style.marginRight = '8px';
+      lab.style.cursor = 'pointer';
+
+      const container = document.createElement('div');
+      container.style.display = 'flex';
+      container.style.alignItems = 'center';
+      container.style.gap = '6px';
+      container.appendChild(radio);
+      container.appendChild(lab);
+      return { container, radio };
+    };
+
+    const dmHome = createRadio('home', 'A domicilio');
+    const dmPickup = createRadio('pickup', 'Recoger en oficina');
+
+    deliveryWrapper.appendChild(dmHome.container);
+    deliveryWrapper.appendChild(dmPickup.container);
+    box.appendChild(deliveryWrapper);
+
+    // --- Form ---
     const form = document.createElement('form');
     form.style.display = 'grid';
     form.style.gridTemplateColumns = '1fr 1fr';
@@ -226,6 +271,52 @@ function showCustomerFormModal(initial = {}) {
 
     box.appendChild(form);
 
+    // Pickup info area (hidden unless pickup)
+    const pickupInfo = document.createElement('div');
+    pickupInfo.style.marginTop = '10px';
+    pickupInfo.style.padding = '10px';
+    pickupInfo.style.borderRadius = '8px';
+    pickupInfo.style.background = 'rgba(15,23,42,0.03)';
+    pickupInfo.style.fontSize = '13px';
+    pickupInfo.style.color = '#111827';
+    pickupInfo.innerHTML = `
+      <strong>Recoger en oficina:</strong> Puedes recoger tu pedido en nuestra oficina principal.
+      <br>Dirección: Calle 123 #45-67, Ciudad.
+      <br>Horario: Lun-Vie 9:00 - 17:00.
+    `;
+    pickupInfo.style.display = 'none';
+    box.appendChild(pickupInfo);
+
+    // Determine initial delivery method
+    const initialDM = initial.deliveryMethod || initial.delivery || 'home';
+    if (initialDM === 'pickup') {
+      dmPickup.radio.checked = true;
+      pickupInfo.style.display = 'block';
+      fDireccion.wrapper.style.display = 'none';
+      fCiudad.wrapper.style.display = 'none';
+    } else {
+      dmHome.radio.checked = true;
+      pickupInfo.style.display = 'none';
+      fDireccion.wrapper.style.display = '';
+      fCiudad.wrapper.style.display = '';
+    }
+
+    // When delivery method changes, show/hide address fields
+    const updateDeliveryUI = (method) => {
+      if (method === 'pickup') {
+        pickupInfo.style.display = 'block';
+        fDireccion.wrapper.style.display = 'none';
+        fCiudad.wrapper.style.display = 'none';
+      } else {
+        pickupInfo.style.display = 'none';
+        fDireccion.wrapper.style.display = '';
+        fCiudad.wrapper.style.display = '';
+      }
+    };
+    dmHome.radio.addEventListener('change', () => updateDeliveryUI('home'));
+    dmPickup.radio.addEventListener('change', () => updateDeliveryUI('pickup'));
+
+    // Buttons
     const buttons = document.createElement('div');
     buttons.style.display = 'flex';
     buttons.style.justifyContent = 'flex-end';
@@ -257,6 +348,8 @@ function showCustomerFormModal(initial = {}) {
     btnConfirm.style.fontWeight = '700';
 
     btnConfirm.addEventListener('click', () => {
+      const deliveryMethod = dmPickup.radio.checked ? 'pickup' : 'home';
+
       const payload = {
         firstName: fNombre.input.value.trim(),
         lastName: fApellido.input.value.trim(),
@@ -264,12 +357,27 @@ function showCustomerFormModal(initial = {}) {
         phone: fTelefono.input.value.trim(),
         address: fDireccion.input.value.trim(),
         city: fCiudad.input.value.trim(),
-        notes: ta.value.trim()
+        notes: ta.value.trim(),
+        deliveryMethod
       };
 
+      // Validaciones
       if (!payload.firstName) { alert('Por favor ingresa tu nombre.'); fNombre.input.focus(); return; }
       if (!payload.email || !/\S+@\S+\.\S+/.test(payload.email)) { alert('Por favor ingresa un correo válido.'); fEmail.input.focus(); return; }
       if (!payload.phone) { alert('Por favor ingresa un teléfono de contacto.'); fTelefono.input.focus(); return; }
+      if (deliveryMethod === 'home' && !payload.address) { alert('Por favor ingresa la dirección de entrega.'); fDireccion.input.focus(); return; }
+      if (deliveryMethod === 'home' && !payload.city) { alert('Por favor ingresa la ciudad.'); fCiudad.input.focus(); return; }
+
+      // Si es pickup, opcionalmente crear un campo que marque la oficina
+      if (deliveryMethod === 'pickup') {
+        payload.pickupLocation = {
+          name: 'Oficina PorkCasaRe',
+          address: 'Calle 123 #45-67, Ciudad',
+          hours: 'Lun-Vie 9:00 - 17:00'
+        };
+        // limpiar address fields o mantener para registro
+        // payload.address = payload.address || '';
+      }
 
       document.body.removeChild(overlay);
       resolve(payload);
@@ -287,6 +395,14 @@ function showCustomerFormModal(initial = {}) {
 }
 
 async function finalizeOrderWithCustomerData(orderRef, buyerUid) {
+  // Información fija de la oficina (si quieres cambiarla, actualiza aquí)
+  const OFFICE_INFO = {
+    name: 'Oficina PorkCasaRe',
+    address: 'Calle 123 #45-67, Ciudad',
+    hours: 'Lun-Vie 9:00 - 17:00',
+    contact: '+57 300 0000000'
+  };
+
   let initial = {};
   try {
     if (buyerUid) {
@@ -303,11 +419,21 @@ async function finalizeOrderWithCustomerData(orderRef, buyerUid) {
     return false;
   }
 
-  await updateDoc(orderRef, {
+  const toSave = {
     status: 'pending_cash',
     buyerInfo: customerData,
+    deliveryMethod: customerData.deliveryMethod || 'home',
     updatedAt: new Date()
-  });
+  };
+
+  if (customerData.deliveryMethod === 'pickup') {
+    toSave.pickupInfo = customerData.pickupLocation || OFFICE_INFO;
+    // Si quieres, puedes sobrescribir buyerInfo.address por la oficina:
+    toSave.buyerInfo.address = toSave.pickupInfo.address;
+    toSave.buyerInfo.city = ''; // opcional
+  }
+
+  await updateDoc(orderRef, toSave);
 
   window.location.href = `checkout.html?orderId=${orderRef.id}`;
   return true;
