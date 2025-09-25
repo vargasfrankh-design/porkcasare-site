@@ -268,7 +268,7 @@ async function addEarnings(uid, amount = 0, meta = {}) {
     earningId,
     type: "earning",
     amount,
-    timestamp: serverTimestamp(),
+    timestamp: Date.now(),
     originMs: meta && meta.originMs ? Number(meta.originMs) : Date.now(),
     meta,
     note: meta.action || "",
@@ -375,7 +375,7 @@ async function cobrarPending(uid, amount = null, options = {}) {
     const entry = {
       type: "withdraw",
       amount: toWithdraw,
-      timestamp: serverTimestamp(),
+      timestamp: Date.now(),
       note: "Cobro desde UI",
       by: (auth.currentUser && auth.currentUser.uid) ? auth.currentUser.uid : "system",
       pointsUsed: pointsUsed
