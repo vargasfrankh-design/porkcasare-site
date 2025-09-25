@@ -31,6 +31,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const userData = docSnap.data();
+      // Exponer tipo de registro globalmente para otros scripts
+window.currentTipoRegistro = (userData.tipoRegistro || userData.rol || 'distribuidor').toString().toLowerCase();
 
       // Mostrar datos básicos
       const nombreEl = document.getElementById("nombre");
@@ -272,12 +274,23 @@ if (historyWrap) {
   });
 });
 
-// --- Escuchar evento personalizado para mostrar alerta de activación ---
 document.addEventListener("personalPointsReady", (e) => {
   const personalPoints = Number(e.detail.personalPoints ?? 0);
+  const tipo = (window.currentTipoRegistro || 'distribuidor').toString().toLowerCase();
+  const threshold = (tipo === 'cliente') ? 70 : 50;
   const alertEl = document.getElementById("activationAlert");
   if (alertEl) {
-    alertEl.style.display = (personalPoints < 50) ? "block" : "none";
+    if (personalPoints < threshold) {
+      const faltan = threshold - personalPoints;
+      if (tipo === 'cliente') {
+        alertEl.innerHTML = `⚠️ Te faltan ${faltan} puntos. Debes comprar o acumular ${threshold} puntos para pasarte a distribuidor y activar el plan de compensación.`;
+      } else {
+        alertEl.innerHTML = `⚠️ Te faltan ${faltan} puntos. Debes realizar una compra mínima de ${threshold} puntos para activar tu código y comenzar a recibir bonos y pagos.`;
+      }
+      alertEl.style.display = "block";
+    } else {
+      alertEl.style.display = "none";
+    }
   }
 });
 
