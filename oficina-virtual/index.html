@@ -58,16 +58,19 @@
 
         <!-- Bloque de comisiones -->
 <div class="comisiones">
-  <div class="comision-item">
+  <div class="comision-item cobradas">
     <div class="comision-label">Comisiones totales cobradas</div>
-    <div id="totalComisionesCobradas">0</span></div>
+    <div class="comision-value">
+      <span id="totalComisionesCobradas">$ 0</span>
+    </div>
   </div>
 
-  <div class="comision-item">
+  <div class="comision-item por-cobrar">
     <div class="comision-label">Comisiones por cobrar</div>
-    <div id="pendingCommissions" class="comision-value">Cargando...</div>
+    <div class="comision-value">
+      <span id="pendingCommissions">Cargando...</span>
+    </div>
   </div>
-</div>
 
         <!-- Bloque wallet y cobrar (añadido para compatibilidad con js/comisiones.js) -->
 <div class="wallet-section" style="margin-top:12px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
