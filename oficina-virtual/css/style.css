@@ -463,3 +463,109 @@ body {
   .wallet-section { flex-direction:column; align-items:flex-start; }
   .wallet-tooltip { transform:translateY(-4px); }
 }
+
+/* ====== FIX: asegurar que cada sección ocupe su fila y recuperar anchura ====== */
+
+/* Hacer el container un poco más ancho y adaptable (antes 1000px) */
+.container {
+  max-width: 1200px;      /* más espacio en pantallas grandes */
+  width: calc(100% - 40px);
+  margin: 30px auto;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* Forzar que .comisiones use toda la fila y no comprima las siguientes secciones */
+.comisiones {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 100%;
+  margin-bottom: 20px;
+  padding: 18px;
+  box-sizing: border-box;
+}
+
+/* Aumentar el tamaño base de cada card dentro de .comisiones para evitar compactación */
+.comision-item {
+  flex: 1 1 320px;   /* base 320px, se adapta en móviles */
+  min-width: 260px;
+  max-width: 46%;    /* hasta dos tarjetas lado a lado en pantallas medias */
+  box-sizing: border-box;
+}
+
+/* Cuando el viewport sea pequeño, apilar al 100% */
+@media (max-width: 880px) {
+  .comision-item { flex: 1 1 100%; max-width: 100%; }
+}
+
+/* Asegurar que el bloque del link de referido ocupe su propia fila y no se solape */
+.referral-row, .referral-wrap, .link-referido {
+  width: 100%;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-start;
+  margin: 18px 0;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+}
+
+/* Productos: mayor anchura y grid más fluido */
+.product-grid {
+  width: 100%;
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  box-sizing: border-box;
+}
+
+/* Historial: ocupe toda la fila y tenga margen superior claro */
+.history-section,
+.history-wrap,
+.history-list {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 18px;
+  box-sizing: border-box;
+}
+
+/* Tree / Red (asegurar ocupa el ancho y mantiene altura) */
+#treeWrap {
+  width: 100%;
+  min-height: 320px;
+  height: 60vh;
+  box-sizing: border-box;
+  margin-top: 18px;
+}
+
+/* Wallet / Cobrar: que ocupe su propia fila y disponer elementos correctamente */
+.wallet-section {
+  width: 100%;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  box-sizing: border-box;
+}
+
+/* Ajuste visual: asegurar separación entre secciones grandes */
+.card + .comisiones,
+.comisiones + .referral-row,
+.referral-row + .product-grid,
+.product-grid + .history-section,
+.history-section + #treeWrap {
+  margin-top: 18px;
+}
+
+/* Opcional: si alguna regla previa fuerza un max-width pequeño, lo anulamos aquí */
+.card, .history-wrap, .product-grid, .comisiones {
+  max-width: 100% !important;
+}
+
+/* Fin del parche */
