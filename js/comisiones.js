@@ -399,7 +399,7 @@ async function cobrarPending(uid, amount = null, options = {}) {
     }
 
     // actualizar total de comisiones cobradas (nuevo campo). Si quieres otro nombre de campo, cámbialo aquí.
-    const oldCharged = Number(data.totalComisionesCobradas ?? data.totalComisionesCobradas ?? 0);
+    const oldCharged = Number(data.totalCommissions ?? data.totalCommissions ?? 0);
     const newCharged = oldCharged + toWithdraw;
 
     const entry = {
