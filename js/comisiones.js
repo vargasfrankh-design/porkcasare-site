@@ -14,6 +14,7 @@ import { auth, db } from "/src/firebase-config.js"; // ajustar ruta si es distin
 
 // DOM elements — ajusta IDs a tu HTML
 const elTotal = document.getElementById("totalCommissions");
+const elComisionesCobradas = document.getElementById("totalComisionesCobradas");
 const elPending = document.getElementById("pendingCommissions");
 const elWallet = document.getElementById("walletBalance");
 const elGroupPoints = document.getElementById("groupPoints"); // elemento que mostrará puntos grupales
@@ -180,7 +181,7 @@ function attachRealtimeForUserBoth(uid) {
   if (unsubscribeTxs) { try { unsubscribeTxs(); } catch {} unsubscribeTxs = null; }
 
   const uRef = doc(db, "usuarios", uid);
-  unsubscribeUserDoc = onSnapshot(uRef, (snap) => {
+  unsubscribeUserDoc = onSnapshot(uRef, async (snap) => {
     const data = snap.exists() ? snap.data() : {};
     if (Array.isArray(data.history)) {
       userHistoryArray = data.history.slice();
@@ -191,10 +192,53 @@ function attachRealtimeForUserBoth(uid) {
     // Actualiza balances visibles si existen
     if (elPending) elPending.textContent = formatCurrency(Number(data.balance ?? 0));
     if (elTotal) elTotal.textContent = formatCurrency(Number(data.totalCommissions ?? 0));
+    if (elCharged) elCharged.textContent = formatCurrency(Number(data.totalComisionesCobradas ?? 0));
     if (elWallet) elWallet.textContent = formatCurrency(Number(data.walletBalance ?? 0));
     if (elGroupPoints) elGroupPoints.textContent = (data.groupPoints !== undefined) ? String(data.groupPoints) : (data.puntosGrupales !== undefined ? String(data.puntosGrupales) : '0');
 
     renderCombinedHistory();
+    // --- Recomputar puntos grupales a partir del history y groupPointsConsumedAt para evitar recontar puntos ya cobrados ---
+    try {
+      const consumedAt = data.groupPointsConsumedAt ? (data.groupPointsConsumedAt.toMillis ? data.groupPointsConsumedAt.toMillis() : data.groupPointsConsumedAt) : null;
+      let computedGroupPoints = 0;
+      if (Array.isArray(userHistoryArray)) {
+        for (const e of userHistoryArray) {
+          const pts = e && e.points ? Number(e.points) : 0;
+          const originMs = e && (e.originMs !== undefined) ? Number(e.originMs) : null;
+          if (!pts || pts <= 0) continue;
+          // si existe consumedAt y originMs definido, sólo sumar si originMs > consumedAt
+          if (consumedAt && originMs) {
+            if (originMs > consumedAt) computedGroupPoints += pts;
+          } else {
+            // si no hay consumedAt, sumar todo
+            if (!consumedAt) computedGroupPoints += pts;
+            else if (!originMs) computedGroupPoints += pts; // seguridad: si el entry no tiene originMs, contarlo
+          }
+        }
+      }
+      // si la DB tiene un valor distinto, lo normalizamos en la base (solo si son distintos para evitar escritura innecesaria)
+      const dbGroupPoints = Number(data.groupPoints ?? data.puntosGrupales ?? 0);
+      if (dbGroupPoints !== computedGroupPoints) {
+        // corregir la DB para reflejar el acumulado correcto
+        try {
+          await runTransaction(db, async (tx) => {
+            const s = await tx.get(uRef);
+            if (!s.exists()) return;
+            const d = s.data();
+            const currentDbGroup = Number(d.groupPoints ?? d.puntosGrupales ?? 0);
+            if (currentDbGroup !== computedGroupPoints) {
+              tx.update(uRef, { groupPoints: computedGroupPoints });
+            }
+          });
+        } catch (e) {
+          console.warn("No se pudo normalizar groupPoints:", e);
+        }
+      }
+    } catch (e) {
+      console.warn("Error al recomputar puntos grupales:", e);
+    }
+    // --- fin recomputo ---
+    
   }, (err) => console.error("onSnapshot usuarios error:", err));
 
   const txCol = collection(db, "usuarios", uid, "transactions");
@@ -219,10 +263,13 @@ async function addEarnings(uid, amount = 0, meta = {}) {
   if (isNaN(amount) || amount <= 0) throw new Error("Monto inválido");
 
   const uRef = doc(db, "usuarios", uid);
+  const earningId = (uid || 'u') + '-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
   const entry = {
+    earningId,
     type: "earning",
     amount,
     timestamp: serverTimestamp(),
+    originMs: meta && meta.originMs ? Number(meta.originMs) : Date.now(),
     meta,
     note: meta.action || "",
     by: meta.by || (auth.currentUser ? auth.currentUser.uid : "system"),
@@ -240,8 +287,17 @@ async function addEarnings(uid, amount = 0, meta = {}) {
     const newBalance = oldBalance + amount;
     const newTotal = oldTotal + amount;
     let newGroupPoints = oldGroupPoints;
+    // Si se provee meta.originMs (timestamp en ms) y ya existe un groupPointsConsumedAt posterior
+    // entonces no sumamos estos puntos al acumulado grupal (evita recontar puntos ya cobrados).
+    const consumedAt = data.groupPointsConsumedAt ? (data.groupPointsConsumedAt.toMillis ? data.groupPointsConsumedAt.toMillis() : null) : null;
+    const originMs = meta && meta.originMs ? Number(meta.originMs) : null;
     if (entry.points && !isNaN(Number(entry.points))) {
-      newGroupPoints = oldGroupPoints + Number(entry.points);
+      if (consumedAt && originMs && originMs <= consumedAt) {
+        // No sumar: este earning corresponde a antes del último cobro grupal
+        newGroupPoints = oldGroupPoints;
+      } else {
+        newGroupPoints = oldGroupPoints + Number(entry.points);
+      }
     }
 
     tx.update(uRef, {
@@ -255,6 +311,7 @@ async function addEarnings(uid, amount = 0, meta = {}) {
   // Crear documento en subcolección transactions
   const txCol = collection(db, "usuarios", uid, "transactions");
   await addDoc(txCol, {
+    earningId: earningId,
     type: "earning",
     amount,
     timestamp: serverTimestamp(),
@@ -270,6 +327,7 @@ async function addEarnings(uid, amount = 0, meta = {}) {
   cobrarPending(uid, amount = null, options = {})
     options: { pointsToUse: number|null, clearGroupPoints: bool }
 */
+
 async function cobrarPending(uid, amount = null, options = {}) {
   if (!uid) throw new Error("Usuario no autenticado");
   const { pointsToUse = null, clearGroupPoints = false } = options;
@@ -288,22 +346,31 @@ async function cobrarPending(uid, amount = null, options = {}) {
     if (isNaN(toWithdraw) || toWithdraw <= 0) throw new Error("Monto inválido");
     if (toWithdraw > currentBalance) throw new Error("Saldo insuficiente");
 
+    // mover de balance -> wallet
     const newBalance = currentBalance - toWithdraw;
     const newWallet = wallet + toWithdraw;
 
-    // Calcular nuevos puntos grupales
+    // calcular y registrar puntos usados (si aplica)
     let newGroupPoints = currentGroupPoints;
+    let pointsUsed = null;
     if (clearGroupPoints) {
+      pointsUsed = currentGroupPoints;
       newGroupPoints = 0;
     } else if (pointsToUse !== null && !isNaN(Number(pointsToUse))) {
+      pointsUsed = Number(pointsToUse);
       newGroupPoints = Math.max(0, currentGroupPoints - Number(pointsToUse));
     } else if (data.lastPoints && !isNaN(Number(data.lastPoints))) {
-      // fallback: si el doc tiene lastPoints (campo de última transacción), restarlo
+      pointsUsed = Number(data.lastPoints);
       newGroupPoints = Math.max(0, currentGroupPoints - Number(data.lastPoints));
     } else {
-      // si no hay info, no tocar puntos
+      // no se usan puntos
+      pointsUsed = null;
       newGroupPoints = currentGroupPoints;
     }
+
+    // actualizar total de comisiones cobradas (nuevo campo). Si quieres otro nombre de campo, cámbialo aquí.
+    const oldCharged = Number(data.totalComisionesCobradas ?? data.totalComisionesCobradas ?? 0);
+    const newCharged = oldCharged + toWithdraw;
 
     const entry = {
       type: "withdraw",
@@ -311,32 +378,37 @@ async function cobrarPending(uid, amount = null, options = {}) {
       timestamp: serverTimestamp(),
       note: "Cobro desde UI",
       by: (auth.currentUser && auth.currentUser.uid) ? auth.currentUser.uid : "system",
-      pointsUsed: (clearGroupPoints ? currentGroupPoints : (pointsToUse ?? null))
+      pointsUsed: pointsUsed
     };
 
     tx.update(uRef, {
       balance: newBalance,
       walletBalance: newWallet,
       groupPoints: newGroupPoints,
-      history: arrayUnion(entry)
+      // guardamos el acumulado de comisiones cobradas
+      totalComisionesCobradas: newCharged,
+      history: arrayUnion(entry),
+      groupPointsConsumedAt: serverTimestamp(),
     });
 
-    result = { withdrawn: toWithdraw, newBalance, newWallet, newGroupPoints };
+    result = { withdrawn: toWithdraw, newBalance, newWallet, newGroupPoints, pointsUsed };
   });
 
-  // Registrar en subcolección
+  // Registrar en subcolección de transacciones
   const txCol = collection(db, "usuarios", uid, "transactions");
   await addDoc(txCol, {
     type: "withdraw",
     amount: result.withdrawn,
     timestamp: serverTimestamp(),
+    originMs: Date.now(),
     note: "Cobro desde UI",
     ownerUid: uid,
-    pointsUsed: result.newGroupPoints !== undefined ? result.newGroupPoints : null
+    pointsUsed: result.pointsUsed !== undefined ? result.pointsUsed : null
   });
 
   return result;
 }
+
 
 // ---- Hook de autenticación: conectar listeners y botón cobrar ----
 onAuthStateChanged(auth, async (user) => {
