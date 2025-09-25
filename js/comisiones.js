@@ -112,7 +112,18 @@ function normalizeEntry(entry, source, docId = null) {
     ts = new Date();
   }
 
-  const id = docId ? `tx_${docId}` : `h_${ts.getTime()}_${entry.type || 'x'}_${entry.amount ?? 0}`;
+  // Prefer explicit IDs if present (earningId, withdrawId), then docId from transactions collection,
+  // otherwise fallback to timestamp-based id for history entries.
+  let id = null;
+  if (entry && entry.earningId) {
+    id = `e_${entry.earningId}`;
+  } else if (entry && entry.withdrawId) {
+    id = `w_${entry.withdrawId}`;
+  } else if (docId) {
+    id = `tx_${docId}`;
+  } else {
+    id = `h_${ts.getTime()}_${entry.type || 'x'}_${entry.amount ?? 0}`;
+  }
 
   return {
     _id: id,
@@ -126,6 +137,7 @@ function normalizeEntry(entry, source, docId = null) {
     raw: entry
   };
 }
+
 
 function buildCombinedList() {
   const all = [];
@@ -192,7 +204,7 @@ function attachRealtimeForUserBoth(uid) {
     // Actualiza balances visibles si existen
     if (elPending) elPending.textContent = formatCurrency(Number(data.balance ?? 0));
     if (elTotal) elTotal.textContent = formatCurrency(Number(data.totalCommissions ?? 0));
-    if (elCharged) elCharged.textContent = formatCurrency(Number(data.totalComisionesCobradas ?? 0));
+    if (elComisionesCobradas) elComisionesCobradas.textContent = formatCurrency(Number(data.totalComisionesCobradas ?? 0));
     if (elWallet) elWallet.textContent = formatCurrency(Number(data.walletBalance ?? 0));
     if (elGroupPoints) elGroupPoints.textContent = (data.groupPoints !== undefined) ? String(data.groupPoints) : (data.puntosGrupales !== undefined ? String(data.puntosGrupales) : '0');
 
@@ -372,7 +384,9 @@ async function cobrarPending(uid, amount = null, options = {}) {
     const oldCharged = Number(data.totalComisionesCobradas ?? data.totalComisionesCobradas ?? 0);
     const newCharged = oldCharged + toWithdraw;
 
+    const withdrawId = (uid || 'u') + '-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
     const entry = {
+      withdrawId,
       type: "withdraw",
       amount: toWithdraw,
       timestamp: Date.now(),
@@ -397,6 +411,7 @@ async function cobrarPending(uid, amount = null, options = {}) {
   // Registrar en subcolección de transacciones
   const txCol = collection(db, "usuarios", uid, "transactions");
   await addDoc(txCol, {
+    withdrawId: withdrawId ?? null,
     type: "withdraw",
     amount: result.withdrawn,
     timestamp: serverTimestamp(),
