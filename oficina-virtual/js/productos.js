@@ -37,6 +37,7 @@ const productos = [
     imagen: "../images/productos/chuleta.jpg",
     precio: 60000,
     puntos: 10
+  }
   },
   {
     id: "costillas-3kg",
@@ -45,6 +46,7 @@ const productos = [
     imagen: "../images/productos/costillas.jpg",
     precio: 60000,
     puntos: 10
+  }
   },
   {
     id: "paticas-3kg",
@@ -54,6 +56,7 @@ const productos = [
     precio: 60000,
     puntos: 10
   }
+  }
 ];
 
 function formatCOP(num) {
@@ -62,6 +65,17 @@ function formatCOP(num) {
     currency: "COP",
     minimumFractionDigits: 0
   }).format(num);
+}
+
+const CLIENTE_PRICE_MULTIPLIER = 1.20; // Para clientes si no existe precioCliente
+
+function getDisplayPrice(prod){
+  const tipo = (window.currentTipoRegistro || 'distribuidor').toLowerCase();
+  if(tipo === 'cliente'){
+    if(typeof prod.precioCliente === 'number') return prod.precioCliente;
+    return Math.round(prod.precio * CLIENTE_PRICE_MULTIPLIER);
+  }
+  return prod.precio;
 }
 
 async function findUserByUsername(username) {
@@ -116,7 +130,7 @@ function renderProductos() {
       <img src="${prod.imagen}" alt="${prod.nombre}">
       <h4>${prod.nombre}</h4>
       <p>${prod.descripcion}</p>
-      <p><strong>${formatCOP(prod.precio)}</strong></p>
+      <p><strong>${formatCOP(getDisplayPrice(prod))}</strong></p>
       <button class="btn small btn-buy" data-id="${prod.id}">Comprar</button>
     </div>
   `).join("");
@@ -491,7 +505,7 @@ async function onBuyClick(e) {
     const orderObj = {
       productId: prod.id,
       productName: prod.nombre,
-      price: prod.precio,
+      price: getDisplayPrice(prod),
       points: prod.puntos,
       buyerUid,
       buyerInfo: customerData,
@@ -557,7 +571,7 @@ async function onBuyClick(e) {
       await updateDoc(doc(db, "usuarios", buyerUid), {
         history: arrayUnion({
           action: `Compra ${prod.nombre}`,
-          amount: prod.precio,
+          amount: getDisplayPrice(prod),
           points: prod.puntos,
           orderId: orderRef.id,
           date: new Date().toISOString()
