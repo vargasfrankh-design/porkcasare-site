@@ -569,23 +569,46 @@ export { addEarnings, cobrarPending, attachRealtimeForUserBoth, normalizeEntry }
       } else {
         if (!confirm('Estás a punto de cobrar ' + pretty + '. Continuar?')) return;
       }
-      // create payouts record for admin panel
-      try {
-        const payoutsCol = collection(db, 'payouts');
-        const now = new Date();
-        let scheduledFor;
-        if (now.getDate() <= 15) scheduledFor = new Date(now.getFullYear(), now.getMonth(), 15);
-        else if (now.getDate() <= 30) scheduledFor = new Date(now.getFullYear(), now.getMonth(), 30);
-        else scheduledFor = new Date(now.getFullYear(), now.getMonth()+1, 15);
-        await addDoc(payoutsCol, {
-          userId: window.uid || (window.auth && window.auth.currentUser && window.auth.currentUser.uid) || null,
-          amount: amount,
-          scheduled_for: scheduledFor.toISOString().slice(0,10),
-          status: 'scheduled',
-          createdAt: serverTimestamp()
-        });
-      } catch (err) {
-        console.warn('No se pudo crear registro en payouts:', err);
+      // create payouts record for admin panel (with auth check)
+      // determine authenticated uid safely
+      const currentUserForPayout = (auth && auth.currentUser) ? auth.currentUser : (window.auth && window.auth.currentUser) ? window.auth.currentUser : null;
+      const uidForAction = currentUserForPayout ? currentUserForPayout.uid : (window.uid || (window.__lastUserData && window.__lastUserData.uid) || null);
+      if (!uidForAction) {
+        console.warn('No hay usuario autenticado. Se requiere iniciar sesión para crear la solicitud de cobro.');
+        if (window.Swal) {
+          await Swal.fire('Error', 'Debes iniciar sesión para solicitar un cobro.', 'error');
+        } else {
+          alert('Debes iniciar sesión para solicitar un cobro.');
+        }
+      } else {
+        try {
+          const payoutsCol = collection(db, 'payouts');
+          const now = new Date();
+          let scheduledFor;
+          if (now.getDate() <= 15) scheduledFor = new Date(now.getFullYear(), now.getMonth(), 15);
+          else if (now.getDate() <= 30) scheduledFor = new Date(now.getFullYear(), now.getMonth(), 30);
+          else scheduledFor = new Date(now.getFullYear(), now.getMonth()+1, 15);
+          await addDoc(payoutsCol, {
+            userId: uidForAction,
+            amount: amount,
+            scheduled_for: scheduledFor.toISOString().slice(0,10),
+            status: 'scheduled',
+            createdAt: serverTimestamp
+              ? serverTimestamp()
+              : new Date().toISOString()
+          });
+          console.log('Payout registrado (payouts collection).');
+        } catch (err) {
+          console.warn('No se pudo crear registro en payouts:', err);
+          // user-friendly message for permission issues
+          if (err && err.code && err.code === 'permission-denied') {
+            if (window.Swal) {
+              await Swal.fire('Error', 'No tienes permisos para solicitar cobros. Contacta al administrador.', 'error');
+            } else {
+              alert('No tienes permisos para solicitar cobros. Contacta al administrador.');
+            }
+          }
+        }
       }
 
       // call existing cobrarPending if available
@@ -594,7 +617,7 @@ export { addEarnings, cobrarPending, attachRealtimeForUserBoth, normalizeEntry }
           newBtn.disabled = true;
           const originalText = newBtn.textContent;
           newBtn.textContent = 'Procesando...';
-          await cobrarPending(window.uid || (window.auth && window.auth.currentUser && window.auth.currentUser.uid), amount, { clearGroupPoints: true });
+          await cobrarPending(uidForAction, amount, { clearGroupPoints: true });
           newBtn.textContent = originalText || 'Cobrar';
           newBtn.disabled = false;
         } else {
