@@ -195,6 +195,8 @@ function attachRealtimeForUserBoth(uid) {
 const uRef = doc(db, "usuarios", uid);
   unsubscribeUserDoc = onSnapshot(uRef, async (snap) => {
     const data = snap.exists() ? snap.data() : {};
+    // guardar snapshot para que listeners usen la fuente de verdad
+    window.__lastUserData = data;
     if (Array.isArray(data.history)) {
       userHistoryArray = data.history.slice();
     } else {
@@ -323,6 +325,8 @@ async function addEarnings(uid, amount = 0, meta = {}) {
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(uRef);
     const data = snap.exists() ? snap.data() : {};
+    // guardar snapshot para que listeners usen la fuente de verdad
+    window.__lastUserData = data;
     const oldBalance = Number(data.balance ?? 0);
     const oldTotal = Number(data.totalCommissions ?? 0);
     const oldGroupPoints = Number(data.groupPoints ?? data.puntosGrupales ?? 0);
@@ -504,7 +508,8 @@ onAuthStateChanged(auth, async (user) => {
         // Aquí asumimos que quieres limpiar puntos grupales al cobrar:
         // cambiamos clearGroupPoints:true para poner groupPoints a 0.
         // Si prefieres usar una cantidad concreta, pásala como segundo parámetro.
-        await cobrarPending(uid, null, { clearGroupPoints: true });
+        const amt = (window.__lastUserData && typeof window.__lastUserData.balance !== 'undefined') ? Number(window.__lastUserData.balance) : null;
+        await cobrarPending(uid, amt, { clearGroupPoints: true });
         console.log("Cobro realizado y puntos grupales actualizados");
       } catch (e) {
         console.error("Error cobrando:", e);
@@ -539,9 +544,17 @@ export { addEarnings, cobrarPending, attachRealtimeForUserBoth, normalizeEntry }
     newBtn.disabled = false;
     newBtn.addEventListener('click', async (ev) => {
       ev.preventDefault();
-      const pendingEl = document.getElementById('pendingCommissions') || document.getElementById('totalCommissions');
-      const raw = pendingEl ? (pendingEl.textContent || '') : '';
-      const amount = Number(raw.replace(/[^0-9.-]+/g,'') || 0);
+      // Preferir balance directo desde el último snapshot si está disponible
+      let amount = 0;
+      if (window.__lastUserData && typeof window.__lastUserData.balance !== 'undefined') {
+        amount = Number(window.__lastUserData.balance) || 0;
+        console.log('Override: usando balance desde __lastUserData =>', amount);
+      } else {
+        const pendingEl = document.getElementById('pendingCommissions') || document.getElementById('totalCommissions');
+        const raw = pendingEl ? (pendingEl.textContent || '') : '';
+        amount = Number((raw.replace(/[^0-9.-]+/g,'') || 0));
+        console.log('Override: fallback leyendo DOM =>', amount);
+      }
       const pretty = (typeof formatCurrency === 'function') ? formatCurrency(amount) : ('$' + amount);
       if (window.Swal) {
         const r = await Swal.fire({
@@ -581,7 +594,7 @@ export { addEarnings, cobrarPending, attachRealtimeForUserBoth, normalizeEntry }
           newBtn.disabled = true;
           const originalText = newBtn.textContent;
           newBtn.textContent = 'Procesando...';
-          await cobrarPending(window.uid || (window.auth && window.auth.currentUser && window.auth.currentUser.uid), null, { clearGroupPoints: true });
+          await cobrarPending(window.uid || (window.auth && window.auth.currentUser && window.auth.currentUser.uid), amount, { clearGroupPoints: true });
           newBtn.textContent = originalText || 'Cobrar';
           newBtn.disabled = false;
         } else {
