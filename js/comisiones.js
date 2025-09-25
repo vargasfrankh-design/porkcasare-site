@@ -202,8 +202,22 @@ const uRef = doc(db, "usuarios", uid);
     }
 
     // Actualiza balances visibles si existen
-    if (elPending) elPending.textContent = formatCurrency(Number(data.totalCommissions ?? 0));
-    if (elTotal) elTotal.textContent = formatCurrency(Number(data.totalCommissions ?? 0));
+    if (elPending) elPending.textContent = formatCurrency(Number(data.balance ?? 0));
+    // Actualizar estado del botón Cobrar: si hay balance positivo mostrar botón y quitar tooltip; si no, deshabilitar y mostrar tooltip.
+    try {
+      const pendingAmountNumber = Number(data.balance ?? 0);
+      if (btnCobrar) {
+        if (pendingAmountNumber > 0) {
+          btnCobrar.removeAttribute('title');
+          btnCobrar.disabled = false;
+        } else {
+          btnCobrar.setAttribute('title', 'No tienes comisiones por cobrar');
+          btnCobrar.disabled = true;
+        }
+      }
+    } catch (e) { console.warn('Error actualizando estado de btnCobrar', e); }
+
+    if (elTotal) elTotal.textContent = formatCurrency(Number(data.totalComisiones ?? data.totalCommissions ?? 0));
     if (elComisionesCobradas) elComisionesCobradas.textContent = formatCurrency(Number(data.totalComisionesCobradas ?? 0));
     if (elWallet) elWallet.textContent = formatCurrency(Number(data.walletBalance ?? 0));
     if (elGroupPoints) elGroupPoints.textContent = (data.groupPoints !== undefined) ? String(data.groupPoints) : (data.puntosGrupales !== undefined ? String(data.puntosGrupales) : '0');
