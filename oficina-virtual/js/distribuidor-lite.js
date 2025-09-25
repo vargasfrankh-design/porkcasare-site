@@ -34,7 +34,12 @@ document.addEventListener("DOMContentLoaded", () => {
       // Exponer tipo de registro globalmente para otros scripts
 window.currentTipoRegistro = (userData.tipoRegistro || userData.rol || 'distribuidor').toString().toLowerCase();
 
-      // Mostrar datos básicos
+      
+
+      // Disparar personalPointsReady para garantizar que otros scripts (productos, alerta) reaccionen
+      const _personalPoints = Number(userData.personalPoints ?? userData.puntos ?? userData.groupPoints ?? 0);
+      document.dispatchEvent(new CustomEvent('personalPointsReady', { detail: { personalPoints: _personalPoints } }));
+// Mostrar datos básicos
       const nombreEl = document.getElementById("nombre");
       const usuarioEl = document.getElementById("usuario");
       const emailEl = document.getElementById("email");
