@@ -569,3 +569,112 @@ body {
 }
 
 /* Fin del parche */
+
+/* ---------- Mobile fixes: make layout readable and not squashed ---------- */
+/* Applied for pantallas pequeñas hasta 880px; ajusta si quieres otro breakpoint */
+@media (max-width: 880px) {
+  /* El container reduce padding lateral para aprovechar el ancho móvil */
+  .container {
+    padding-left: 12px;
+    padding-right: 12px;
+    max-width: 100%;
+  }
+
+  /* Forzar que las tarjetas de comisiones ocupen toda la fila y sean grandes */
+  .comisiones {
+    padding: 12px;
+    gap: 12px;
+  }
+  .comision-item {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    margin-bottom: 12px;
+  }
+  .comision-value {
+    font-size: 20px !important;       /* mayor legibilidad en móvil */
+    padding: 12px 14px !important;
+    min-height: 56px !important;
+  }
+
+  /* Evitar el "cuadro" pequeño alrededor del símbolo $ */
+  .comision-value span, .comision-value > * {
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: inline-block;
+    line-height: normal;
+  }
+
+  /* Wallet / Cobrar: botón en línea y después el texto debajo si falta espacio */
+  .wallet-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+    width: 100%;
+  }
+  .wallet-section .btn {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 16px;
+  }
+
+  /* Link referido: campo + botón ocupen ancho completo y sean amigables en móvil */
+  .referral-row, .link-referido, .wallet-tooltip-wrap {
+    width: 100% !important;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .referral-row input[type="text"],
+  .referral-row input[type="url"],
+  .link-referido input[type="text"],
+  .link-referido input {
+    flex: 1 1 100% !important;
+    min-width: 0;
+    width: 100% !important;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+  .referral-row .btn, .link-referido .btn {
+    flex: 0 0 auto;
+    min-width: 110px;
+  }
+
+  /* Productos: una columna por fila en móvil */
+  .product-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  /* Historial: más alto para hacer scroll cómodo */
+  .history-list, .history-wrap {
+    max-height: 420px;
+    padding: 10px;
+  }
+
+  /* Tree / red: ajustar altura para vista móvil */
+  #treeWrap {
+    height: 50vh;
+    min-height: 300px;
+  }
+
+  /* Encabezados un poco más grandes para mejor jerarquía visual */
+  .comision-label { font-size: 14px !important; }
+  .history-section h2, .history-wrap h3 { font-size: 1.08rem !important; }
+
+  /* Ajustes de espacio general para evitar que las secciones queden pegadas */
+  .card, .comisiones, .product-grid, .history-section, #treeWrap {
+    margin-bottom: 18px;
+  }
+}
+
+/* Extra: si el signo $ sigue con fondo, forzamos estilo neutro */
+.comision-value i, .comision-value .money-icon {
+  background: transparent !important;
+  padding: 0 !important;
+  margin-right: 8px;
+  vertical-align: middle;
+}
