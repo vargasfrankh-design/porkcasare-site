@@ -192,7 +192,7 @@ function attachRealtimeForUserBoth(uid) {
   if (unsubscribeUserDoc) { try { unsubscribeUserDoc(); } catch {} unsubscribeUserDoc = null; }
   if (unsubscribeTxs) { try { unsubscribeTxs(); } catch {} unsubscribeTxs = null; }
 
-  const uRef = doc(db, "usuarios", uid);
+const uRef = doc(db, "usuarios", uid);
   unsubscribeUserDoc = onSnapshot(uRef, async (snap) => {
     const data = snap.exists() ? snap.data() : {};
     if (Array.isArray(data.history)) {
@@ -343,6 +343,7 @@ async function addEarnings(uid, amount = 0, meta = {}) {
 async function cobrarPending(uid, amount = null, options = {}) {
   if (!uid) throw new Error("Usuario no autenticado");
   const { pointsToUse = null, clearGroupPoints = false } = options;
+  const withdrawId = (uid || 'u') + '-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
 
   const uRef = doc(db, "usuarios", uid);
   let result = null;
@@ -384,7 +385,6 @@ async function cobrarPending(uid, amount = null, options = {}) {
     const oldCharged = Number(data.totalComisionesCobradas ?? data.totalComisionesCobradas ?? 0);
     const newCharged = oldCharged + toWithdraw;
 
-    const withdrawId = (uid || 'u') + '-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
     const entry = {
       withdrawId,
       type: "withdraw",
