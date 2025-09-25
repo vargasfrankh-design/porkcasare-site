@@ -27,6 +27,7 @@ const productos = [
     nombre: "Paquete Inicial – 15 kg",
     descripcion: "Incluye 15 kilos de chuletas, costillas y paticas empacadas al vacío.",
     imagen: "../images/productos/inicio.jpg",
+    precioCliente: 300000,
     precio: 300000,
     puntos: 50
   },
