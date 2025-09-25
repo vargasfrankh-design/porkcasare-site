@@ -480,7 +480,7 @@ onAuthStateChanged(auth, async (user) => {
   // Conectar botón cobrar (clonar para evitar múltiples listeners)
   if (btnCobrar) {
     const newBtn = btnCobrar.cloneNode(true);
-    btnCobrar.parentNode.replaceChild(newBtn, btnCobrar);
+    if (btnCobrar.parentNode) btnCobrar.parentNode.replaceChild(newBtn, btnCobrar); else console.warn('btnCobrar.parentNode is null — skip replaceChild');
     newBtn.disabled = false;
     newBtn.addEventListener("click", async () => {
       newBtn.disabled = true;
@@ -521,7 +521,7 @@ export { addEarnings, cobrarPending, attachRealtimeForUserBoth, normalizeEntry }
     if (!btn) return;
     // replace to remove previous listeners
     const newBtn = btn.cloneNode(true);
-    btn.parentNode.replaceChild(newBtn, btn);
+    if (btn.parentNode) btn.parentNode.replaceChild(newBtn, btn); else console.warn('btn.parentNode is null — skip replaceChild');
     newBtn.disabled = false;
     newBtn.addEventListener('click', async (ev) => {
       ev.preventDefault();
