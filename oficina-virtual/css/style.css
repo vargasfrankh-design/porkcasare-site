@@ -367,19 +367,20 @@ body {
   margin-bottom: 10px;
 }
 
-/* --- Comisiones: bloque antes del link de referido --- */
+/* --- Comisiones: estilo amplio, neutro y más espacioso --- */
 .comisiones {
   display: flex;
-  gap: 14px;
-  align-items: center;
-  justify-content: flex-start;
-  margin-bottom: 16px; /* espacio antes del link de referido */
-  padding: 12px;
-  border: 1px solid #e6eefc;
-  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
-  border-radius: 8px;
-  max-width: 720px;
-  box-shadow: 0 1px 4px rgba(43,146,230,0.06);
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 18px;
+  border: 1px solid rgba(44, 114, 255, 0.08); /* borde sutil azulado */
+  background: #ffffff; /* fondo neutro, sin amarillento */
+  border-radius: 10px;
+  width: 100%;       /* ocupar todo el ancho disponible */
+  max-width: none;   /* quitar la restricción previa */
+  box-shadow: 0 6px 22px rgba(16,24,40,0.04);
   flex-wrap: wrap;
 }
 
@@ -387,79 +388,62 @@ body {
 .comision-item {
   display: flex;
   flex-direction: column;
-  min-width: 180px;
-  flex: 1 1 180px;
+  min-width: 260px;      /* más ancho por item */
+  flex: 1 1 40%;         /* ocupan más espacio proporcionalmente */
+  margin-bottom: 8px;
 }
 
 /* etiqueta (pequeña) */
 .comision-label {
   font-size: 13px;
-  color: #4b5563; /* gris azulado */
-  margin-bottom: 6px;
+  color: #475569; /* gris azulado */
+  margin-bottom: 8px;
+  font-weight: 600;
 }
 
-/* valor grande (neutro por defecto) */
+/* valor grande (reajustado para más presencia) */
 .comision-value {
-  font-weight: 700;
-  font-size: 18px;
-  color: #0b6b29; /* color por defecto (se puede sobrescribir) */
-  background: rgba(11,107,41,0.04);
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(11,107,41,0.08);
-  text-align: left;
-}
-
-/* SE CAMBIA: hacemos el valor por defecto más neutro y añadimos variantes específicas */
-.comision-value {
-  font-weight: 700;
-  font-size: 18px;
-  color: #0f1724; /* texto principal oscuro */
-  background: rgba(241,243,245,1); /* neutro suave */
-  padding: 10px 12px;
+  font-weight: 800;
+  font-size: 20px;       /* más grande */
+  color: #0f1724;        /* texto oscuro por defecto */
+  background: #f8fafc;   /* neutro muy claro */
+  padding: 14px 16px;    /* más padding vertical para dar aire */
   border-radius: 10px;
   border: 1px solid rgba(12,18,28,0.04);
   text-align: left;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 48px;
+  gap: 10px;
+  min-height: 56px;      /* caja visualmente más alta */
 }
 
-/* Variante: Comisiones cobradas (verde) */
+/* Variante: Comisiones cobradas (verde suave) */
 .comision-item.cobradas .comision-value,
 #totalComisionesCobradas {
-  background: linear-gradient(180deg, #eef9f0, #e6f6ea);
+  background: linear-gradient(180deg, #f3fbf5, #eef9f0);
   color: #0b6b29;
   border: 1px solid rgba(11, 107, 54, 0.08);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
-  font-size: 1.05rem;
-  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
+  font-size: 22px;
+  font-weight: 900;
 }
 
-/* Variante: Comisiones por cobrar (azul) */
+/* Variante: Comisiones por cobrar (azul suave) */
 .comision-item.por-cobrar .comision-value,
 #pendingCommissions {
-  background: linear-gradient(180deg, #eef6ff, #e6f0ff);
+  background: linear-gradient(180deg, #f3f8ff, #eef6ff);
   color: #0b57b3;
   border: 1px solid rgba(11, 87, 179, 0.08);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
-  font-size: 1.05rem;
-  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
+  font-size: 22px;
+  font-weight: 900;
 }
 
-/* Si quieres resaltar comisiones por cobrar (por ejemplo si >0) */
-.comision-value.pending {
-  color: #9a6700; /* color ámbar para atención */
-  border-color: rgba(154,103,0,0.08);
-  background: rgba(154,103,0,0.04);
-}
-
-/* responsive: en pantallas muy pequeñas, los items se apilan */
-@media (max-width: 520px) {
-  .comisiones { gap: 10px; padding: 10px; }
-  .comision-item { min-width: 100%; }
-  .comision-value { font-size: 16px; }
+/* Responsividad: en móviles apilar verticalmente con buen padding */
+@media (max-width: 880px) {
+  .comisiones { padding: 12px; gap: 12px; }
+  .comision-item { flex: 1 1 100%; min-width: 100%; }
+  .comision-value { font-size: 18px; min-height: 56px; padding: 12px; }
 }
 
 /* ======== Wallet & Cobrar styles ======== */
