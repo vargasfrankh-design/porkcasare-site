@@ -211,27 +211,44 @@ const uRef = doc(db, "usuarios", uid);
     renderCombinedHistory();
     // --- Recomputar puntos grupales a partir del history y groupPointsConsumedAt para evitar recontar puntos ya cobrados ---
     try {
-      const consumedAt = data.groupPointsConsumedAt ? (data.groupPointsConsumedAt.toMillis ? data.groupPointsConsumedAt.toMillis() : data.groupPointsConsumedAt) : null;
+      const consumedAt = data.groupPointsConsumedAt ? (data.groupPointsConsumedAt.toMillis ? data.groupPointsConsumedAt.toMillis() : (typeof data.groupPointsConsumedAt === 'number' ? data.groupPointsConsumedAt : null)) : null;
       let computedGroupPoints = 0;
       if (Array.isArray(userHistoryArray)) {
         for (const e of userHistoryArray) {
-          const pts = e && e.points ? Number(e.points) : 0;
-          const originMs = e && (e.originMs !== undefined) ? Number(e.originMs) : null;
+          const pts = e && (e.points ?? e.pointsUsed) ? Number(e.points ?? e.pointsUsed) : 0;
           if (!pts || pts <= 0) continue;
-          // si existe consumedAt y originMs definido, sólo sumar si originMs > consumedAt
-          if (consumedAt && originMs) {
-            if (originMs > consumedAt) computedGroupPoints += pts;
+          // Determinar timestamp del entry en ms
+          let entryTs = null;
+          // Prefer originMs si existe
+          if (e.originMs !== undefined && e.originMs !== null) {
+            entryTs = Number(e.originMs);
+          } else if (e.timestamp !== undefined && e.timestamp !== null) {
+            // timestamp podría ser número (ms) o Date objeto convertido
+            if (typeof e.timestamp === 'number') entryTs = Number(e.timestamp);
+            else if (e.timestamp && typeof e.timestamp.getTime === 'function') entryTs = e.timestamp.getTime();
+            else if (typeof e.timestamp === 'string') {
+              const parsed = Date.parse(e.timestamp);
+              if (!isNaN(parsed)) entryTs = parsed;
+            }
+          } else if (e.date !== undefined && e.date !== null) {
+            const parsed = Date.parse(e.date);
+            if (!isNaN(parsed)) entryTs = parsed;
+          }
+          // Si existe consumedAt: solo sumar si entryTs > consumedAt
+          if (consumedAt) {
+            if (entryTs && entryTs > consumedAt) {
+              computedGroupPoints += pts;
+            }
+            // si entryTs no está disponible, no sumamos (no podemos asegurar que fue posterior)
           } else {
-            // si no hay consumedAt, sumar todo
-            if (!consumedAt) computedGroupPoints += pts;
-            else if (!originMs) computedGroupPoints += pts; // seguridad: si el entry no tiene originMs, contarlo
+            // Si no hay consumedAt, sumar todo (comportamiento legacy)
+            computedGroupPoints += pts;
           }
         }
       }
-      // si la DB tiene un valor distinto, lo normalizamos en la base (solo si son distintos para evitar escritura innecesaria)
+      // Normalizar valor en DB solo si difiere (y solo si computedGroupPoints es diferente)
       const dbGroupPoints = Number(data.groupPoints ?? data.puntosGrupales ?? 0);
       if (dbGroupPoints !== computedGroupPoints) {
-        // corregir la DB para reflejar el acumulado correcto
         try {
           await runTransaction(db, async (tx) => {
             const s = await tx.get(uRef);
