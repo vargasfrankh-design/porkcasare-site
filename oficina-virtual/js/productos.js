@@ -35,27 +35,27 @@ const productos = [
     nombre: "Chuletas – 3 kg",
     descripcion: "Chuletas frescas y jugosas, empacadas al vacío.",
     imagen: "../images/productos/chuleta.jpg",
+    precioCliente: 72000,
     precio: 60000,
     puntos: 10
-  }
   },
   {
     id: "costillas-3kg",
     nombre: "Costillitas – 3 kg",
     descripcion: "Costillitas tiernas y llenas de sabor.",
     imagen: "../images/productos/costillas.jpg",
+    precioCliente: 72000,
     precio: 60000,
     puntos: 10
-  }
   },
   {
     id: "paticas-3kg",
     nombre: "Paticas – 3 kg",
     descripcion: "Paticas perfectas para caldos y guisos.",
     imagen: "../images/productos/paticas.jpg",
+    precioCliente: 72000,
     precio: 60000,
     puntos: 10
-  }
   }
 ];
 
@@ -591,6 +591,20 @@ async function onBuyClick(e) {
     return;
   }
 }
+
+
+// Asegurar que los productos se rendericen también cuando se dispare personalPointsReady
+document.addEventListener('personalPointsReady', (e) => {
+  try {
+    // Si la página ya cargó, refrescamos la renderización (especialmente útil si el tipo de usuario cambió)
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      // re-renderizar para asegurar precios correctos
+      renderProductos();
+    }
+  } catch (err) {
+    console.warn('personalPointsReady listener error:', err);
+  }
+});
 
 document.addEventListener("DOMContentLoaded", () => {
   renderProductos();
