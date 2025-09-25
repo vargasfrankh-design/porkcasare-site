@@ -202,7 +202,7 @@ const uRef = doc(db, "usuarios", uid);
     }
 
     // Actualiza balances visibles si existen
-    if (elPending) elPending.textContent = formatCurrency(Number(data.balance ?? 0));
+    if (elPending) elPending.textContent = formatCurrency(Number(data.totalCommissions ?? 0));
     if (elTotal) elTotal.textContent = formatCurrency(Number(data.totalCommissions ?? 0));
     if (elComisionesCobradas) elComisionesCobradas.textContent = formatCurrency(Number(data.totalComisionesCobradas ?? 0));
     if (elWallet) elWallet.textContent = formatCurrency(Number(data.walletBalance ?? 0));
@@ -505,3 +505,85 @@ onAuthStateChanged(auth, async (user) => {
 
 // Exportar funciones útiles
 export { addEarnings, cobrarPending, attachRealtimeForUserBoth, normalizeEntry };
+
+// NOTE: couldn't locate original cobrar listener; added confirmation handler separately.
+
+
+
+// --- OVERRIDE: mejorar comportamiento de Cobrar ---
+// Este bloque asegura que al pulsar 'Cobrar' se muestre una confirmación bonita
+// y se envíe un documento a la colección 'payouts' para que el panel admin lo vea,
+// antes de invocar la función cobrarPending existente.
+
+(function() {
+  const setup = () => {
+    const btn = document.getElementById('btnCobrar');
+    if (!btn) return;
+    // replace to remove previous listeners
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    newBtn.disabled = false;
+    newBtn.addEventListener('click', async (ev) => {
+      ev.preventDefault();
+      const pendingEl = document.getElementById('pendingCommissions') || document.getElementById('totalCommissions');
+      const raw = pendingEl ? (pendingEl.textContent || '') : '';
+      const amount = Number(raw.replace(/[^0-9.-]+/g,'') || 0);
+      const pretty = (typeof formatCurrency === 'function') ? formatCurrency(amount) : ('$' + amount);
+      if (window.Swal) {
+        const r = await Swal.fire({
+          title: 'Estás a punto de cobrar',
+          html: `Se te reflejarán <b>${pretty}</b> en tu cuenta.<br><small>Los pagos se procesan los días 15 y 30 de cada mes.</small>`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Aceptar y enviar a administración',
+          cancelButtonText: 'Cancelar'
+        });
+        if (!r.isConfirmed) return;
+      } else {
+        if (!confirm('Estás a punto de cobrar ' + pretty + '. Continuar?')) return;
+      }
+      // create payouts record for admin panel
+      try {
+        const payoutsCol = collection(db, 'payouts');
+        const now = new Date();
+        let scheduledFor;
+        if (now.getDate() <= 15) scheduledFor = new Date(now.getFullYear(), now.getMonth(), 15);
+        else if (now.getDate() <= 30) scheduledFor = new Date(now.getFullYear(), now.getMonth(), 30);
+        else scheduledFor = new Date(now.getFullYear(), now.getMonth()+1, 15);
+        await addDoc(payoutsCol, {
+          userId: window.uid || (window.auth && window.auth.currentUser && window.auth.currentUser.uid) || null,
+          amount: amount,
+          scheduled_for: scheduledFor.toISOString().slice(0,10),
+          status: 'scheduled',
+          createdAt: serverTimestamp()
+        });
+      } catch (err) {
+        console.warn('No se pudo crear registro en payouts:', err);
+      }
+
+      // call existing cobrarPending if available
+      try {
+        if (typeof cobrarPending === 'function') {
+          newBtn.disabled = true;
+          const originalText = newBtn.textContent;
+          newBtn.textContent = 'Procesando...';
+          await cobrarPending(window.uid || (window.auth && window.auth.currentUser && window.auth.currentUser.uid), null, { clearGroupPoints: true });
+          newBtn.textContent = originalText || 'Cobrar';
+          newBtn.disabled = false;
+        } else {
+          console.warn('cobrarPending no disponible en este contexto.');
+        }
+      } catch(e) {
+        console.error('Error al ejecutar cobrarPending:', e);
+        if (window.Swal) Swal.fire('Error', e.message || 'Error al cobrar', 'error');
+      }
+    });
+  };
+
+  // Try to setup now, or after DOM loaded
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(setup, 200);
+  } else {
+    window.addEventListener('DOMContentLoaded', setup);
+  }
+})();
