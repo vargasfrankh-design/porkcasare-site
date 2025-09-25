@@ -398,11 +398,11 @@ body {
   margin-bottom: 6px;
 }
 
-/* valor grande */
+/* valor grande (neutro por defecto) */
 .comision-value {
   font-weight: 700;
   font-size: 18px;
-  color: #0b6b29; /* verde para montos positivos */
+  color: #0b6b29; /* color por defecto (se puede sobrescribir) */
   background: rgba(11,107,41,0.04);
   padding: 8px 10px;
   border-radius: 6px;
@@ -410,7 +410,45 @@ body {
   text-align: left;
 }
 
-/* si quieres resaltar comisiones por cobrar (por ejemplo si >0) */
+/* SE CAMBIA: hacemos el valor por defecto más neutro y añadimos variantes específicas */
+.comision-value {
+  font-weight: 700;
+  font-size: 18px;
+  color: #0f1724; /* texto principal oscuro */
+  background: rgba(241,243,245,1); /* neutro suave */
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(12,18,28,0.04);
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+}
+
+/* Variante: Comisiones cobradas (verde) */
+.comision-item.cobradas .comision-value,
+#totalComisionesCobradas {
+  background: linear-gradient(180deg, #eef9f0, #e6f6ea);
+  color: #0b6b29;
+  border: 1px solid rgba(11, 107, 54, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+/* Variante: Comisiones por cobrar (azul) */
+.comision-item.por-cobrar .comision-value,
+#pendingCommissions {
+  background: linear-gradient(180deg, #eef6ff, #e6f0ff);
+  color: #0b57b3;
+  border: 1px solid rgba(11, 87, 179, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+/* Si quieres resaltar comisiones por cobrar (por ejemplo si >0) */
 .comision-value.pending {
   color: #9a6700; /* color ámbar para atención */
   border-color: rgba(154,103,0,0.08);
