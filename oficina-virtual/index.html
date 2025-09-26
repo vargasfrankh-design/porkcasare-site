@@ -241,69 +241,21 @@
   </div> <!-- /.container -->
 
   <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <script type="module" src="js/distribuidor-lite.js"></script>
-  <script type="module" src="js/red-unilevel.js"></script>
-  <script type="module" src="js/productos.js"></script>
-  <script type="module" src="/js/comisiones.js"></script>
   <script>
-(function(){
-  function setup(){
-    const btn = document.getElementById('btnCobrar');
-    if (!btn) return;
-    // envolver el botón para posicionar tooltip
-    let wrapBtn = btn.parentElement;
-    if (!wrapBtn.classList.contains('wallet-tooltip-wrap')) {
-      const wrapper = document.createElement('span');
-      wrapper.className = 'wallet-tooltip-wrap';
-      wrapBtn.replaceChild(wrapper, btn);
-      wrapper.appendChild(btn);
-      wrapBtn = wrapper;
-    } else {
-      wrapBtn = btn.parentElement;
-    }
-    // crear tooltip
-    let tip = wrapBtn.querySelector('.wallet-tooltip');
-    if (!tip) {
-      tip = document.createElement('div');
-      tip.className = 'wallet-tooltip hidden';
-      tip.textContent = 'No tienes comisiones por cobrar';
-      wrapBtn.appendChild(tip);
-    }
-
-    function updateTooltip(){
-      if (btn.disabled) {
-        tip.classList.remove('hidden');
-      } else {
-        tip.classList.add('hidden');
-      }
-    }
-
-    updateTooltip();
-    const obs = new MutationObserver(() => updateTooltip());
-    obs.observe(btn, { attributes: true, attributeFilter: ['disabled'] });
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setup);
-  } else {
-    setup();
-  }
-})();
-</script>
-
-<script>
-
-<!-- Loading overlay control — enhanced: waits for avatar-grid or hides quickly for default avatars -->
-<script>
-/* Loading overlay control — version improved to wait for avatar-grid hiding */
+/* Loading overlay control — versión robusta: busca el elemento dinámicamente */
 (function () {
   const overlayId = 'page-loading-overlay';
-  const overlay = document.getElementById(overlayId);
+
+  function getOverlay() {
+    return document.getElementById(overlayId);
+  }
 
   window.showPageLoading = function(message) {
-    if (!overlay) return;
+    const overlay = getOverlay();
+    if (!overlay) {
+      console.debug('[page-loading] showPageLoading: overlay no encontrado');
+      return;
+    }
     overlay.classList.remove('hidden');
     overlay.setAttribute('aria-hidden', 'false');
     if (message) {
@@ -313,135 +265,34 @@
   };
 
   window.hidePageLoading = function() {
-    if (!overlay) return;
+    const overlay = getOverlay();
+    if (!overlay) {
+      console.debug('[page-loading] hidePageLoading: overlay no encontrado (buscar fallback)');
+      // fallback: intentar localizar y ocultar por id
+      const ov = document.getElementById(overlayId);
+      if (ov) {
+        ov.classList.add('hidden');
+        ov.setAttribute('aria-hidden', 'true');
+        setTimeout(() => { if (ov && ov.parentNode) ov.parentNode.removeChild(ov); }, 400);
+      }
+      return;
+    }
     overlay.classList.add('hidden');
     overlay.setAttribute('aria-hidden', 'true');
     setTimeout(() => {
-      if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      const ov = getOverlay();
+      if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
     }, 400);
   };
 
-  function isProfileUsingDefault(imgEl) {
-    try {
-      if (!imgEl) return true;
-      const raw = imgEl.getAttribute && imgEl.getAttribute('src') ? imgEl.getAttribute('src') : (imgEl.src || '');
-      const src = String(raw).split('?')[0].toLowerCase();
-      if (!src) return true;
-      if (src.includes('default-avatar.png')) return true;
-      if (/avatar[_-]?\d+\.png$/.test(src)) return true;
-      if (src.indexOf('/images/avatars/') !== -1 && /avatar\d+\.png$/.test(src)) return true;
-      return false;
-    } catch (e) {
-      return true;
-    }
-  }
-
-  function waitForAvatarGridThenHide() {
-    const avatarGrid = document.querySelector('.avatar-grid') || document.getElementById('avatarGrid');
-    const profileImg = document.getElementById('profileImg');
-    const changeAvatarBtn = document.getElementById('changeAvatarBtn');
-
-    if (!avatarGrid) {
-      setTimeout(() => window.hidePageLoading(), 120);
-      return;
-    }
-
-    if (isProfileUsingDefault(profileImg)) {
-      setTimeout(() => window.hidePageLoading(), 120);
-      return;
-    }
-
-    let observer;
-    let finished = false;
-    const finish = () => {
-      if (finished) return;
-      finished = true;
-      try { if (observer) observer.disconnect(); } catch(e){}
-      window.hidePageLoading();
-    };
-
-    try {
-      observer = new MutationObserver(() => {
-        try {
-          const inDom = document.body.contains(avatarGrid);
-          const style = window.getComputedStyle(avatarGrid);
-          const isHidden = !inDom || (style && (style.display === 'none' || style.visibility === 'hidden' || avatarGrid.hidden));
-          if (isHidden) finish();
-        } catch (err) {}
-      });
-      observer.observe(avatarGrid, { attributes: true, attributeFilter: ['style','class','hidden'], childList: true });
-    } catch (e) {
-      observer = null;
-    }
-
-    let attempts = 0;
-    const poll = setInterval(() => {
-      attempts++;
-      try {
-        const inDom = document.body.contains(avatarGrid);
-        const style = window.getComputedStyle(avatarGrid);
-        const isHidden = !inDom || (style && (style.display === 'none' || style.visibility === 'hidden' || avatarGrid.hidden));
-        if (isHidden) {
-          clearInterval(poll);
-          finish();
-        } else if (attempts > 50) {
-          clearInterval(poll);
-          finish();
-        }
-      } catch (e) {}
-    }, 250);
-
-    if (changeAvatarBtn) {
-      changeAvatarBtn.addEventListener('click', () => {
-        setTimeout(() => {
-          try {
-            const style = window.getComputedStyle(avatarGrid);
-            if (style.display === 'none' || avatarGrid.hidden) finish();
-          } catch (e) {}
-        }, 220);
-      });
-    }
-
-    setTimeout(() => {
-      try {
-        const style = window.getComputedStyle(avatarGrid);
-        const isHiddenNow = !document.body.contains(avatarGrid) || (style && (style.display === 'none' || style.visibility === 'hidden' || avatarGrid.hidden));
-        if (!isHiddenNow) {
-          finish();
-        }
-      } catch (e) {
-        finish();
-      }
-    }, 12000);
-  }
-
-  window.addEventListener('load', function () {
-    try {
-      const avatarGrid = document.querySelector('.avatar-grid') || document.getElementById('avatarGrid');
-      const profileImg = document.getElementById('profileImg');
-
-      if (!avatarGrid || isProfileUsingDefault(profileImg)) {
-        setTimeout(() => window.hidePageLoading(), 260);
-      } else {
-        waitForAvatarGridThenHide();
-      }
-    } catch (e) {
-      setTimeout(() => window.hidePageLoading(), 800);
-    }
-  });
-
-  window.onMapReady = function() {
-    try { window.hidePageLoading(); } catch(e) { 
-      const ov = document.getElementById('page-loading-overlay'); if (ov) ov.classList.add('hidden');
-    }
-  };
-
+  // Mantener el timeout de seguridad existente (ejemplo: 18s)
   setTimeout(() => {
-    const ov = document.getElementById(overlayId);
+    const ov = getOverlay();
     if (ov && !ov.classList.contains('hidden')) {
       try { window.hidePageLoading(); } catch(e) { ov.classList.add('hidden'); }
     }
   }, 18000);
+
 })();
 </script>
 
