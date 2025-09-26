@@ -537,6 +537,99 @@ async function refreshTreeAndStats(rootCode, userId) {
   renderTree(tree);
   updateStatsFromTree(tree);
   await readAndRenderPoints(userId);
+    // Notify loading overlay based on avatar-grid visibility and profile avatar selection.
+    (function waitForAvatarUiThenHide() {
+      const overlayHide = function() {
+        if (typeof window.hidePageLoading === 'function') {
+          try { window.hidePageLoading(); } catch(e) { console.warn('hidePageLoading failed', e); }
+        } else if (typeof window.onMapReady === 'function') {
+          try { window.onMapReady(); } catch(e) { console.warn('onMapReady failed', e); }
+        } else {
+          const ov = document.getElementById('page-loading-overlay');
+          if (ov) ov.classList.add('hidden');
+        }
+      };
+
+      const avatarGrid = document.querySelector('.avatar-grid') || document.getElementById('avatarGrid');
+      const profileImg = document.getElementById('profileImg');
+
+      function isProfileUsingDefault(imgEl) {
+        if (!imgEl) return true;
+        const src = (imgEl.getAttribute && imgEl.getAttribute('src')) || imgEl.src || '';
+        if (!src) return true;
+        const url = src.split('?')[0].toLowerCase();
+        // consider default patterns: files named avatar_*.png or default-avatar.png, or empty src
+        if (url.includes('/images/avatars/default-avatar.png')) return true;
+        if (url.match(/avatar[_-]?\d+\.png$/)) return true;
+        // if DB uses relative path like 'images/avatars/avatar9.png', browser may resolve absolute; check basename
+        if (url.indexOf('/images/avatars/') !== -1 && url.match(/avatar\d+\.png$/)) return true;
+        return false;
+      }
+
+      // If no avatarGrid in DOM, nothing to wait for: hide immediately.
+      if (!avatarGrid) {
+        // small timeout so UI has a chance to settle visually
+        setTimeout(overlayHide, 120);
+        return;
+      }
+
+      // If user has NO custom avatar (profile uses default), hide overlay quickly.
+      if (isProfileUsingDefault(profileImg)) {
+        setTimeout(overlayHide, 120);
+        return;
+      }
+
+      // Otherwise user has a chosen avatar: wait until the avatarGrid is hidden/removed.
+      // Observe attribute changes and childList to detect display:none or removal.
+      const observer = new MutationObserver((mutations) => {
+        try {
+          const inDom = document.body.contains(avatarGrid);
+          const style = avatarGrid && window.getComputedStyle(avatarGrid);
+          const isHidden = !inDom || (style && (style.display === 'none' || style.visibility === 'hidden' || avatarGrid.hidden));
+          if (isHidden) {
+            observer.disconnect();
+            overlayHide();
+          }
+        } catch (err) {
+          console.warn('avatar-grid observer error', err);
+        }
+      });
+
+      // Start observing
+      try {
+        observer.observe(avatarGrid, { attributes: true, attributeFilter: ['style','class','hidden'], childList: true, subtree: false });
+      } catch (e) {
+        // if observe fails, fallback to polling
+        console.warn('observer failed, falling back to polling', e);
+        let attempts = 0;
+        const poll = setInterval(() => {
+          attempts++;
+          const inDom = document.body.contains(avatarGrid);
+          const style = avatarGrid && window.getComputedStyle(avatarGrid);
+          const isHidden = !inDom || (style && (style.display === 'none' || style.visibility === 'hidden' || avatarGrid.hidden));
+          if (isHidden || attempts > 40) {
+            clearInterval(poll);
+            overlayHide();
+          }
+        }, 250);
+        return;
+      }
+
+      // Also set a safety timeout: if nothing hides after N seconds, hide to avoid locking.
+      setTimeout(() => {
+        try {
+          const style = avatarGrid && window.getComputedStyle(avatarGrid);
+          const isHidden = !document.body.contains(avatarGrid) || (style && (style.display === 'none' || style.visibility === 'hidden' || avatarGrid.hidden));
+          if (!isHidden) {
+            // still visible after timeout: hide overlay anyway but keep observer alive for future UI changes
+            overlayHide();
+          }
+        } catch (e) {
+          overlayHide();
+        }
+      }, 12000);
+    })();
+
     // Notify loading overlay that the 'map' (network tree) is ready
     if (typeof window.hidePageLoading === 'function') {
       try { window.hidePageLoading(); } catch(e) { console.warn('hidePageLoading failed', e); }
