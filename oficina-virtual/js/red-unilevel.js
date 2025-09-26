@@ -648,7 +648,11 @@ onAuthStateChanged(auth, async (user) => {
           const clientPath = resolveAvatarPath(dbPath);
           if (profileImg) profileImg.src = clientPath;
           if (avatarGrid) avatarGrid.style.display = "none";
-        if (changeAvatarBtn) changeAvatarBtn.style.display = "inline-block";
+          if (changeAvatarBtn) changeAvatarBtn.style.display = "inline-block";
+        } catch (err) {
+          console.error('Error actualizando avatar (red-unilevel):', err);
+          alert('No se pudo cambiar el avatar.');
+        }
       });
     });
     if (changeAvatarBtn) {
