@@ -537,6 +537,13 @@ async function refreshTreeAndStats(rootCode, userId) {
   renderTree(tree);
   updateStatsFromTree(tree);
   await readAndRenderPoints(userId);
+    // Notify loading overlay that the 'map' (network tree) is ready
+    if (typeof window.hidePageLoading === 'function') {
+      try { window.hidePageLoading(); } catch(e) { console.warn('hidePageLoading failed', e); }
+    } else if (typeof window.onMapReady === 'function') {
+      try { window.onMapReady(); } catch(e) { console.warn('onMapReady failed', e); }
+    }
+
 }
 
 /* Manejo de estado de sesión y UI inicial */
