@@ -294,12 +294,14 @@
 </script>
 
 <script>
-/* Loading overlay control */
+
+<!-- Loading overlay control — enhanced: waits for avatar-grid or hides quickly for default avatars -->
+<script>
+/* Loading overlay control — version improved to wait for avatar-grid hiding */
 (function () {
   const overlayId = 'page-loading-overlay';
   const overlay = document.getElementById(overlayId);
 
-  // Expose toggle functions globally in case other scripts want to control loading state
   window.showPageLoading = function(message) {
     if (!overlay) return;
     overlay.classList.remove('hidden');
@@ -314,37 +316,135 @@
     if (!overlay) return;
     overlay.classList.add('hidden');
     overlay.setAttribute('aria-hidden', 'true');
-    // remove from DOM after transition to avoid intercepting clicks
     setTimeout(() => {
       if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
     }, 400);
   };
 
-  // Show overlay immediately (it is present in DOM by default)
-  // Hide overlay when everything is loaded (images, scripts, XHRs that happened during load)
-  window.addEventListener('load', function () {
-    // Small delay so the transition is noticeable and smooth
-    setTimeout(() => {
+  function isProfileUsingDefault(imgEl) {
+    try {
+      if (!imgEl) return true;
+      const raw = imgEl.getAttribute && imgEl.getAttribute('src') ? imgEl.getAttribute('src') : (imgEl.src || '');
+      const src = String(raw).split('?')[0].toLowerCase();
+      if (!src) return true;
+      if (src.includes('default-avatar.png')) return true;
+      if (/avatar[_-]?\d+\.png$/.test(src)) return true;
+      if (src.indexOf('/images/avatars/') !== -1 && /avatar\d+\.png$/.test(src)) return true;
+      return false;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function waitForAvatarGridThenHide() {
+    const avatarGrid = document.querySelector('.avatar-grid') || document.getElementById('avatarGrid');
+    const profileImg = document.getElementById('profileImg');
+    const changeAvatarBtn = document.getElementById('changeAvatarBtn');
+
+    if (!avatarGrid) {
+      setTimeout(() => window.hidePageLoading(), 120);
+      return;
+    }
+
+    if (isProfileUsingDefault(profileImg)) {
+      setTimeout(() => window.hidePageLoading(), 120);
+      return;
+    }
+
+    let observer;
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      try { if (observer) observer.disconnect(); } catch(e){}
       window.hidePageLoading();
-    }, 260);
+    };
+
+    try {
+      observer = new MutationObserver(() => {
+        try {
+          const inDom = document.body.contains(avatarGrid);
+          const style = window.getComputedStyle(avatarGrid);
+          const isHidden = !inDom || (style && (style.display === 'none' || style.visibility === 'hidden' || avatarGrid.hidden));
+          if (isHidden) finish();
+        } catch (err) {}
+      });
+      observer.observe(avatarGrid, { attributes: true, attributeFilter: ['style','class','hidden'], childList: true });
+    } catch (e) {
+      observer = null;
+    }
+
+    let attempts = 0;
+    const poll = setInterval(() => {
+      attempts++;
+      try {
+        const inDom = document.body.contains(avatarGrid);
+        const style = window.getComputedStyle(avatarGrid);
+        const isHidden = !inDom || (style && (style.display === 'none' || style.visibility === 'hidden' || avatarGrid.hidden));
+        if (isHidden) {
+          clearInterval(poll);
+          finish();
+        } else if (attempts > 50) {
+          clearInterval(poll);
+          finish();
+        }
+      } catch (e) {}
+    }, 250);
+
+    if (changeAvatarBtn) {
+      changeAvatarBtn.addEventListener('click', () => {
+        setTimeout(() => {
+          try {
+            const style = window.getComputedStyle(avatarGrid);
+            if (style.display === 'none' || avatarGrid.hidden) finish();
+          } catch (e) {}
+        }, 220);
+      });
+    }
+
+    setTimeout(() => {
+      try {
+        const style = window.getComputedStyle(avatarGrid);
+        const isHiddenNow = !document.body.contains(avatarGrid) || (style && (style.display === 'none' || style.visibility === 'hidden' || avatarGrid.hidden));
+        if (!isHiddenNow) {
+          finish();
+        }
+      } catch (e) {
+        finish();
+      }
+    }, 12000);
+  }
+
+  window.addEventListener('load', function () {
+    try {
+      const avatarGrid = document.querySelector('.avatar-grid') || document.getElementById('avatarGrid');
+      const profileImg = document.getElementById('profileImg');
+
+      if (!avatarGrid || isProfileUsingDefault(profileImg)) {
+        setTimeout(() => window.hidePageLoading(), 260);
+      } else {
+        waitForAvatarGridThenHide();
+      }
+    } catch (e) {
+      setTimeout(() => window.hidePageLoading(), 800);
+    }
   });
 
-  // Safety timeout: if load doesn't fire within 8s, hide overlay to avoid locking UI
-  setTimeout(() => {
-    if (overlay && !overlay.classList.contains('hidden')) {
-      // Optionally change subtitle to indicate timeout
-      const sub = overlay.querySelector('.loader-text .subtitle');
-      if (sub) sub.textContent = 'Casi listo...';
-      // keep showing but allow user to dismiss after another 5s
-      setTimeout(() => {
-        if (overlay && !overlay.classList.contains('hidden')) {
-          window.hidePageLoading();
-        }
-      }, 5000);
+  window.onMapReady = function() {
+    try { window.hidePageLoading(); } catch(e) { 
+      const ov = document.getElementById('page-loading-overlay'); if (ov) ov.classList.add('hidden');
     }
-  }, 8000);
+  };
+
+  setTimeout(() => {
+    const ov = document.getElementById(overlayId);
+    if (ov && !ov.classList.contains('hidden')) {
+      try { window.hidePageLoading(); } catch(e) { ov.classList.add('hidden'); }
+    }
+  }, 18000);
 })();
 </script>
+
 
 </body>
 </html>
