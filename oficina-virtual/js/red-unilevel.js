@@ -10,9 +10,20 @@ import {
   getDocs,
   doc,
   getDoc,
+  updateDoc,
   runTransaction
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
+
+// --- helper: normalize avatar path ---
+function resolveAvatarPath(p) {
+  if (!p) return '/images/avatars/default-avatar.png';
+  if (/^https?:\/\//.test(p)) return p;
+  p = String(p).trim();
+  if (p.startsWith('/')) return p;
+  p = p.replace(/^(\.\.\/)+/, '');
+  return '/' + p.replace(/^\/+/, '');
+}
 const DEPTH_LIMIT = 6;
 const FIELD_USUARIO = "usuario";
 const FIELD_HISTORY = "history";
@@ -622,18 +633,21 @@ onAuthStateChanged(auth, async (user) => {
     const profileImg = document.getElementById("profileImg");
     const avatarGrid = document.querySelector(".avatar-grid");
     const changeAvatarBtn = document.getElementById("changeAvatarBtn");
-    const savedAvatar = localStorage.getItem("selectedAvatar");
-    if (savedAvatar && profileImg) {
-      profileImg.src = savedAvatar;
+    // load avatar from DB (d) if available
+    const dbFoto = d?.fotoURL || null;
+    if (dbFoto && profileImg) {
+      profileImg.src = resolveAvatarPath(dbFoto);
       if (avatarGrid) avatarGrid.style.display = "none";
       if (changeAvatarBtn) changeAvatarBtn.style.display = "inline-block";
     }
     document.querySelectorAll(".avatar-grid img").forEach(img => {
-      img.addEventListener("click", () => {
-        const selected = `../images/avatars/${img.dataset.avatar}`;
-        if (profileImg) profileImg.src = selected;
-        localStorage.setItem("selectedAvatar", selected);
-        if (avatarGrid) avatarGrid.style.display = "none";
+      img.addEventListener("click", async () => {
+        const dbPath = `images/avatars/${img.dataset.avatar}`;
+        try {
+          await updateDoc(doc(db, 'usuarios', user.uid), { fotoURL: dbPath });
+          const clientPath = resolveAvatarPath(dbPath);
+          if (profileImg) profileImg.src = clientPath;
+          if (avatarGrid) avatarGrid.style.display = "none";
         if (changeAvatarBtn) changeAvatarBtn.style.display = "inline-block";
       });
     });
