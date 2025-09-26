@@ -15,6 +15,16 @@ import {
   getDocs
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
+
+// --- helper: normalize avatar path ---
+function resolveAvatarPath(p) {
+  if (!p) return '/images/avatars/default-avatar.png';
+  if (/^https?:\/\//.test(p)) return p;
+  p = String(p).trim();
+  if (p.startsWith('/')) return p;
+  p = p.replace(/^(\.\.\/)+/, '');
+  return '/' + p.replace(/^\/+/, '');
+}
 document.addEventListener("DOMContentLoaded", () => {
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
@@ -86,7 +96,6 @@ window.currentTipoRegistro = (userData.tipoRegistro || userData.rol || 'distribu
           try {
             await signOut(auth);
             localStorage.removeItem("theme");
-            localStorage.removeItem("selectedAvatar");
             window.location.href = "../index.html";
           } catch (error) {
             console.error("❌ Error al cerrar sesión:", error);
@@ -112,12 +121,11 @@ window.currentTipoRegistro = (userData.tipoRegistro || userData.rol || 'distribu
               if (userData.fotoURL !== selectedAvatar) {
                 await updateDoc(docRef, { fotoURL: selectedAvatar });
               }
-              if (profileImg) profileImg.src = `../${selectedAvatar}`;
-              localStorage.setItem("selectedAvatar", selectedAvatar);
+              if (profileImg) profileImg.src = resolveAvatarPath(selectedAvatar);
               if (avatarGrid) avatarGrid.style.display = "none";
               if (changeAvatarBtn) changeAvatarBtn.style.display = "inline-block";
               alert("✅ Avatar actualizado correctamente.");
-            } catch (err) {
+} catch (err) {
               console.error("❌ Error guardando avatar:", err);
               alert("Error al actualizar avatar.");
             } finally {
