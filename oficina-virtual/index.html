@@ -5,8 +5,112 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Oficina Virtual - PorkCasare</title>
   <link rel="stylesheet" href="css/style.css" />
+<style>
+/* Loading overlay styles */
+#page-loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10,11,13,0.65), rgba(20,22,23,0.65));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  opacity: 1;
+  transition: opacity 300ms ease, visibility 300ms ease;
+  visibility: visible;
+  backdrop-filter: blur(4px) saturate(120%);
+  -webkit-backdrop-filter: blur(4px) saturate(120%);
+}
+
+/* Hidden state */
+#page-loading-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Card */
+#page-loading-overlay .loader-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+  border-radius: 14px;
+  padding: 22px 28px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  box-shadow: 0 6px 30px rgba(2,6,23,0.6);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: #fff;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+/* Spinner */
+.loader-spinner {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(from 0deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02));
+  padding: 6px;
+  box-shadow: inset 0 -6px 12px rgba(0,0,0,0.25);
+}
+.loader-spinner .dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 4px solid transparent;
+  border-top-color: #7be495;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Text */
+.loader-text {
+  display: flex;
+  flex-direction: column;
+}
+.loader-text .title {
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.1px;
+}
+.loader-text .subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.85);
+}
+
+/* subtle pulse under the card */
+#page-loading-overlay::after {
+  content: "";
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, rgba(123,228,149,0.12), transparent 40%);
+  filter: blur(12px);
+  z-index: 99998;
+  transform: translateY(40px);
+}
+</style>
 </head>
 <body>
+<!-- Page Loading Overlay (inserted by assistant) -->
+<div id="page-loading-overlay" aria-hidden="false" role="status" aria-live="polite">
+  <div class="loader-card" role="presentation">
+    <div class="loader-spinner" aria-hidden="true">
+      <div class="dot"></div>
+    </div>
+    <div class="loader-text">
+      <div class="title">Cargando Oficina Virtual…</div>
+      <div class="subtitle">Estamos preparando tu espacio. Esto no debería tardar mucho.</div>
+    </div>
+  </div>
+</div>
+<!-- end loading overlay -->
+
   <!-- Barra de navegación -->
   <nav class="nav">
     <div class="brand">
@@ -188,5 +292,59 @@
   }
 })();
 </script>
+
+<script>
+/* Loading overlay control */
+(function () {
+  const overlayId = 'page-loading-overlay';
+  const overlay = document.getElementById(overlayId);
+
+  // Expose toggle functions globally in case other scripts want to control loading state
+  window.showPageLoading = function(message) {
+    if (!overlay) return;
+    overlay.classList.remove('hidden');
+    overlay.setAttribute('aria-hidden', 'false');
+    if (message) {
+      const sub = overlay.querySelector('.loader-text .subtitle');
+      if (sub) sub.textContent = message;
+    }
+  };
+
+  window.hidePageLoading = function() {
+    if (!overlay) return;
+    overlay.classList.add('hidden');
+    overlay.setAttribute('aria-hidden', 'true');
+    // remove from DOM after transition to avoid intercepting clicks
+    setTimeout(() => {
+      if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }, 400);
+  };
+
+  // Show overlay immediately (it is present in DOM by default)
+  // Hide overlay when everything is loaded (images, scripts, XHRs that happened during load)
+  window.addEventListener('load', function () {
+    // Small delay so the transition is noticeable and smooth
+    setTimeout(() => {
+      window.hidePageLoading();
+    }, 260);
+  });
+
+  // Safety timeout: if load doesn't fire within 8s, hide overlay to avoid locking UI
+  setTimeout(() => {
+    if (overlay && !overlay.classList.contains('hidden')) {
+      // Optionally change subtitle to indicate timeout
+      const sub = overlay.querySelector('.loader-text .subtitle');
+      if (sub) sub.textContent = 'Casi listo...';
+      // keep showing but allow user to dismiss after another 5s
+      setTimeout(() => {
+        if (overlay && !overlay.classList.contains('hidden')) {
+          window.hidePageLoading();
+        }
+      }, 5000);
+    }
+  }, 8000);
+})();
+</script>
+
 </body>
 </html>
