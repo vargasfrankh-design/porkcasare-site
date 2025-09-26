@@ -295,13 +295,12 @@
 
 <script>
 
-<!-- Enhanced Loading overlay control — robust with error-handling and diagnostics -->
+<!-- Loading overlay control — enhanced: waits for avatar-grid or hides quickly for default avatars -->
 <script>
+/* Loading overlay control — version improved to wait for avatar-grid hiding */
 (function () {
   const overlayId = 'page-loading-overlay';
   const overlay = document.getElementById(overlayId);
-
-  function logDebug(...args){ try{ console.debug('[page-loading]', ...args); }catch(e){} }
 
   window.showPageLoading = function(message) {
     if (!overlay) return;
@@ -328,69 +327,37 @@
       const raw = imgEl.getAttribute && imgEl.getAttribute('src') ? imgEl.getAttribute('src') : (imgEl.src || '');
       const src = String(raw).split('?')[0].toLowerCase();
       if (!src) return true;
-      if (src.indexOf('default-avatar') !== -1) return true;
-      if (src.match(/avatar[_-]?\d+\.png$/)) return true;
-      if (src.indexOf('/images/avatars/') !== -1 && src.match(/avatar\d+\.png$/)) return true;
+      if (src.includes('default-avatar.png')) return true;
+      if (/avatar[_-]?\d+\.png$/.test(src)) return true;
+      if (src.indexOf('/images/avatars/') !== -1 && /avatar\d+\.png$/.test(src)) return true;
       return false;
     } catch (e) {
       return true;
     }
   }
 
-  // Track if any JS runtime error occurred (uncaught)
-  let runtimeErrorOccured = false;
-  window.addEventListener('error', function(e){ runtimeErrorOccured = true; logDebug('runtime error event', e && e.message); });
-  window.addEventListener('unhandledrejection', function(e){ runtimeErrorOccured = true; logDebug('unhandled rejection', e && e.reason); });
-
-  function safeHide() {
-    try {
-      if (typeof window.hidePageLoading === 'function') {
-        window.hidePageLoading();
-      } else {
-        const ov = document.getElementById(overlayId);
-        if (ov) ov.classList.add('hidden');
-      }
-    } catch (e) {
-      const ov = document.getElementById(overlayId);
-      if (ov) ov.classList.add('hidden');
-    }
-  }
-
-  function waitForAvatarGridThenHide(options) {
-    options = options || {};
+  function waitForAvatarGridThenHide() {
     const avatarGrid = document.querySelector('.avatar-grid') || document.getElementById('avatarGrid');
     const profileImg = document.getElementById('profileImg');
     const changeAvatarBtn = document.getElementById('changeAvatarBtn');
-    logDebug('waitForAvatarGridThenHide: found avatarGrid, profileImg', !!avatarGrid, !!profileImg);
 
     if (!avatarGrid) {
-      logDebug('no avatarGrid -> hide soon');
-      setTimeout(safeHide, 120);
+      setTimeout(() => window.hidePageLoading(), 120);
       return;
     }
 
-    // If profile uses default, hide quickly
     if (isProfileUsingDefault(profileImg)) {
-      logDebug('profile uses default -> hide soon');
-      setTimeout(safeHide, 120);
+      setTimeout(() => window.hidePageLoading(), 120);
       return;
     }
 
-    // If a runtime error occurred, avoid blocking
-    if (runtimeErrorOccured) {
-      logDebug('runtime error detected -> hiding overlay to avoid lock');
-      setTimeout(safeHide, 120);
-      return;
-    }
-
-    // Observe removal or style changes on avatarGrid
-    let observer = null;
+    let observer;
     let finished = false;
     const finish = () => {
       if (finished) return;
       finished = true;
       try { if (observer) observer.disconnect(); } catch(e){}
-      safeHide();
+      window.hidePageLoading();
     };
 
     try {
@@ -399,95 +366,82 @@
           const inDom = document.body.contains(avatarGrid);
           const style = window.getComputedStyle(avatarGrid);
           const isHidden = !inDom || (style && (style.display === 'none' || style.visibility === 'hidden' || avatarGrid.hidden));
-          logDebug('observer sees isHidden=', isHidden);
           if (isHidden) finish();
-        } catch (err) {
-          logDebug('observer callback error', err);
-        }
+        } catch (err) {}
       });
-      observer.observe(avatarGrid, { attributes: true, attributeFilter: ['style','class','hidden'], childList: true, subtree: false });
+      observer.observe(avatarGrid, { attributes: true, attributeFilter: ['style','class','hidden'], childList: true });
     } catch (e) {
-      logDebug('observer attach failed', e);
       observer = null;
     }
 
-    // Polling fallback with limited attempts
     let attempts = 0;
-    const maxAttempts = options.maxAttempts || 60; // 60 * 250ms ~= 15s
-    const pollInterval = options.pollInterval || 250;
     const poll = setInterval(() => {
       attempts++;
       try {
         const inDom = document.body.contains(avatarGrid);
         const style = window.getComputedStyle(avatarGrid);
         const isHidden = !inDom || (style && (style.display === 'none' || style.visibility === 'hidden' || avatarGrid.hidden));
-        logDebug('poll attempt', attempts, 'isHidden', isHidden);
         if (isHidden) {
           clearInterval(poll);
           finish();
-          return;
-        }
-        if (runtimeErrorOccured) {
+        } else if (attempts > 50) {
           clearInterval(poll);
-          logDebug('runtime error during polling');
           finish();
-          return;
         }
-        if (attempts >= maxAttempts) {
-          clearInterval(poll);
-          logDebug('max attempts reached -> finishing to avoid lock');
-          finish();
-          return;
-        }
-      } catch (e) {
-        clearInterval(poll);
-        finish();
-      }
-    }, pollInterval);
+      } catch (e) {}
+    }, 250);
 
-    // Also detect clicks on changeAvatarBtn which probably triggers the hide
     if (changeAvatarBtn) {
       changeAvatarBtn.addEventListener('click', () => {
         setTimeout(() => {
           try {
             const style = window.getComputedStyle(avatarGrid);
             if (style.display === 'none' || avatarGrid.hidden) finish();
-          } catch (e) { finish(); }
+          } catch (e) {}
         }, 220);
       });
     }
 
-    // Safety timeout: hide after 18 seconds regardless
     setTimeout(() => {
-      if (!finished) {
-        logDebug('safety timeout triggered -> hiding overlay');
+      try {
+        const style = window.getComputedStyle(avatarGrid);
+        const isHiddenNow = !document.body.contains(avatarGrid) || (style && (style.display === 'none' || style.visibility === 'hidden' || avatarGrid.hidden));
+        if (!isHiddenNow) {
+          finish();
+        }
+      } catch (e) {
         finish();
       }
-    }, 18000);
+    }, 12000);
   }
 
-  // Main hook: run on load
-  window.addEventListener('load', () => {
+  window.addEventListener('load', function () {
     try {
       const avatarGrid = document.querySelector('.avatar-grid') || document.getElementById('avatarGrid');
       const profileImg = document.getElementById('profileImg');
-      logDebug('onload: avatarGrid?', !!avatarGrid, 'profileImg default?', isProfileUsingDefault(profileImg));
-      if (!avatarGrid || isProfileUsingDefault(profileImg) || runtimeErrorOccured) {
-        setTimeout(safeHide, 260);
+
+      if (!avatarGrid || isProfileUsingDefault(profileImg)) {
+        setTimeout(() => window.hidePageLoading(), 260);
       } else {
-        waitForAvatarGridThenHide({ maxAttempts: 60, pollInterval: 250 });
+        waitForAvatarGridThenHide();
       }
     } catch (e) {
-      // fallback hide
-      safeHide();
+      setTimeout(() => window.hidePageLoading(), 800);
     }
   });
 
-  // expose manual hook
-  window.onMapReady = function(){ safeHide(); };
-  window.__pageLoadingDebug = { isProfileUsingDefault };
+  window.onMapReady = function() {
+    try { window.hidePageLoading(); } catch(e) { 
+      const ov = document.getElementById('page-loading-overlay'); if (ov) ov.classList.add('hidden');
+    }
+  };
 
-  // Also, if overlay exists but nothing happens, allow manual hide via console: window.hidePageLoading()
+  setTimeout(() => {
+    const ov = document.getElementById(overlayId);
+    if (ov && !ov.classList.contains('hidden')) {
+      try { window.hidePageLoading(); } catch(e) { ov.classList.add('hidden'); }
+    }
+  }, 18000);
 })();
 </script>
 
