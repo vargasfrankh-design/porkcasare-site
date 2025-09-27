@@ -285,20 +285,40 @@ function renderTree(rootNode) {
   const g = svg.append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
+  // --- Habilitar zoom/pan (soporta mouse y touch) ---
+  const zoom = d3g.zoom()
+    .scaleExtent([0.4, 2])
+    .on('zoom', (event) => {
+      // event.transform contiene la matriz de transformación
+      g.attr('transform', event.transform);
+    });
+
+  // Aplicar comportamiento de zoom al svg
+  svg.call(zoom)
+     // iniciar con el margen ya aplicado para que el contenido no quede pegado al borde
+     .call(zoom.transform, d3g.zoomIdentity.translate(margin.left, margin.top));
+
+  // evitar zoom por doble click si no lo deseas
+  svg.on('dblclick.zoom', null);
+
+  // Nota: para desplazar con el dedo o el mouse, el usuario puede arrastrar en el área y usar pinch para hacer zoom.
+
+
   // convertir a d3.hierarchy
   // d3 espera children en 'children'
   const root = d3g.hierarchy(rootNode, d => d.children || []);
   const treeLayout = d3g.tree().size([width, height - 40]); // espacio vertical
   treeLayout(root);
-  // Centrar el árbol en el contenedor (horiz & vert)
+  // Centrar el árbol: dejar el nodo raíz arriba (top) y centrado horizontalmente
   try {
-    // root.x, root.y están en coordenadas del layout
+    const TOP_MARGIN = 60; // separación desde la parte superior
+    // calcular desplazamiento horizontal para centrar la raíz
     const shiftX = (width / 2) - root.x;
-    const shiftY = (height / 2) - root.y;
+    // desplazar verticalmente para que la raíz quede cerca del TOP_MARGIN
+    const shiftY = TOP_MARGIN - root.y;
     root.each(d => { d.x = d.x + shiftX; d.y = d.y + shiftY; });
   } catch (err) {
-    // no bloquear si falla
-    console.warn("No se pudo centrar el árbol automáticamente:", err);
+    console.warn("No se pudo centrar el árbol en top:", err);
   }
 
 
