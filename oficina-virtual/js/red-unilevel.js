@@ -616,9 +616,24 @@ function updateStatsFromTree(tree) {
     puntos += n.puntos || 0;
     (n.children || []).forEach(walk);
   })(tree);
-  const el = document.getElementById("statsInfo");
-  if (el) {
-    el.textContent = `Usuarios: ${total} | Activos: ${activos} | Inactivos: ${inactivos} | Puntos: ${puntos}`;
+
+  // frontales (primer nivel)
+  const frontales = (tree.children || []).length;
+
+  // actualizar spans del header (si existen)
+  const elFront = document.getElementById("statFrontales");
+  const elTotal = document.getElementById("statTotal");
+  const elRecompra = document.getElementById("statRecompra");
+
+  if (elFront) elFront.textContent = String(frontales);
+  if (elTotal) elTotal.textContent = String(total);
+  if (elRecompra) elRecompra.textContent = String(activos);
+
+  // ocultar/limpiar el resumen inferior si existe
+  const bottom = document.getElementById("statsInfo");
+  if (bottom) {
+    bottom.textContent = "";
+    bottom.style.display = "none";
   }
 }
 
