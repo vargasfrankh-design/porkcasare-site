@@ -25,6 +25,11 @@ function resolveAvatarPath(p) {
   return '/' + p.replace(/^\/+/, '');
 }
 const DEPTH_LIMIT = 6;
+
+// navegación de redes (stack para volver)
+let NAV_STACK = [];
+let CURRENT_ROOT = null;
+
 const FIELD_USUARIO = "usuario";
 const FIELD_HISTORY = "history";
 const FIELD_PATROCINADOR_ID = "patrocinadorId";
@@ -191,6 +196,57 @@ function renderTree(rootNode) {
   const treeWrap = document.getElementById("treeWrap");
   clearElement(treeWrap);
   if (!rootNode) return;
+  // crear/actualizar breadcrumbs y botón volver
+  CURRENT_ROOT = rootNode.usuario || (rootNode.data && rootNode.data.usuario) || null;
+  if (typeof window._refreshNetworkBreadcrumbs === 'function') window._refreshNetworkBreadcrumbs();
+  let bc = document.getElementById("network-breadcrumbs");
+  if (!bc) {
+    bc = document.createElement("div");
+    bc.id = "network-breadcrumbs";
+    bc.style.position = "absolute";
+    bc.style.left = "12px";
+    bc.style.top = "12px";
+    bc.style.zIndex = 9998;
+    bc.style.background = "rgba(255,255,255,0.9)";
+    bc.style.padding = "6px 10px";
+    bc.style.borderRadius = "8px";
+    bc.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)";
+    bc.style.fontSize = "13px";
+    bc.style.display = "flex";
+    bc.style.alignItems = "center";
+    bc.style.gap = "8px";
+    treeWrap.style.position = treeWrap.style.position || 'relative';
+    treeWrap.appendChild(bc);
+  }
+
+  function refreshBreadcrumbs(){
+    bc.innerHTML = '';
+    if (NAV_STACK.length > 0) {
+      const back = document.createElement('button');
+      back.textContent = '← Volver';
+      back.className = 'btn';
+      back.style.padding = '6px 8px';
+      back.style.fontSize = '13px';
+      back.addEventListener('click', async ()=>{
+        const last = NAV_STACK.pop();
+        if (!last) return;
+        try{
+          const root = await buildUnilevelTree(last);
+          if (root) renderTree(root);
+        }catch(e){ console.error(e); alert('Error al volver'); }
+      });
+      bc.appendChild(back);
+    }
+    const path = document.createElement('div');
+    path.style.fontWeight = '600';
+    path.textContent = (NAV_STACK.length ? NAV_STACK.join(' > ') + ' > ' : '') + (CURRENT_ROOT || 'Root');
+    bc.appendChild(path);
+  }
+  refreshBreadcrumbs();
+  // exponer para uso futuro
+  window._refreshNetworkBreadcrumbs = refreshBreadcrumbs;
+
+
 
   // Preferir la instancia global de d3 (script en index)
   const d3g = (typeof window !== 'undefined' && window.d3) ? window.d3 : (typeof d3 !== 'undefined' ? d3 : null);
@@ -210,6 +266,8 @@ function renderTree(rootNode) {
   // crear svg responsivo
   const svg = d3g.select(treeWrap)
     .append("svg")
+  // agregar filtro de sombra para nodos
+  
     .attr("viewBox", `0 0 ${contW} ${contH}`)
     .attr("preserveAspectRatio", "xMidYMin meet")
     .style("width", "100%")
@@ -219,6 +277,11 @@ function renderTree(rootNode) {
     .style("-webkit-transform", "translateZ(0)")
     .style("transform", "translateZ(0)");
 
+  
+  const defs = svg.append('defs');
+  const filter = defs.append('filter').attr('id','node-drop').attr('x','-50%').attr('y','-50%').attr('width','200%').attr('height','200%');
+  filter.append('feDropShadow').attr('dx',0).attr('dy',3).attr('stdDeviation',4).attr('flood-color','#000').attr('flood-opacity',0.18);
+
   const g = svg.append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
@@ -227,6 +290,17 @@ function renderTree(rootNode) {
   const root = d3g.hierarchy(rootNode, d => d.children || []);
   const treeLayout = d3g.tree().size([width, height - 40]); // espacio vertical
   treeLayout(root);
+  // Centrar el árbol en el contenedor (horiz & vert)
+  try {
+    // root.x, root.y están en coordenadas del layout
+    const shiftX = (width / 2) - root.x;
+    const shiftY = (height / 2) - root.y;
+    root.each(d => { d.x = d.x + shiftX; d.y = d.y + shiftY; });
+  } catch (err) {
+    // no bloquear si falla
+    console.warn("No se pudo centrar el árbol automáticamente:", err);
+  }
+
 
   // enlaces (curvos)
   const link = g.selectAll(".link")
@@ -246,6 +320,11 @@ function renderTree(rootNode) {
     .attr("fill", "none")
     .attr("stroke", "#d0d0d0");
 
+  // animar links entrada
+  link.attr('stroke-opacity', 0)
+    .transition().duration(600).attr('stroke-opacity', 1);
+
+
   // nodos
   const node = g.selectAll(".node")
     .data(root.descendants())
@@ -264,7 +343,8 @@ function renderTree(rootNode) {
 
   // círculo visible
   node.append("circle")
-    .attr("r", 30)
+    .attr("r", d => d.depth === 0 ? 36 : Math.max(20, 34 - d.depth*2))
+      .attr("filter", "url(#node-drop)")
     .attr("fill", d => (d.data.usuario === rootNode.usuario ? "#2b9df3" : d.data.active ? "#28a745" : "#bfbfbf"))
     .attr("stroke", "#ffffff")
     .attr("stroke-width", 3)
@@ -275,8 +355,16 @@ function renderTree(rootNode) {
     .attr("y", 6)
     .attr("text-anchor", "middle")
     .attr("fill", "#fff")
-    .style("font-size", "12px")
+    .style("font-size", "13px")
+    .style("font-weight", "700")
     .text(d => (d.data.usuario || "").length > 12 ? d.data.usuario.slice(0, 10) + "…" : d.data.usuario || "");
+
+  // animar nodos (entrada)
+  node.attr('opacity',0)
+    .attr('transform', d => `translate(${d.x},${d.y+18})`)
+    .transition().duration(600).ease(d3g.easeCubic)
+    .attr('opacity',1)
+    .attr('transform', d => `translate(${d.x},${d.y})`);
 
   // handlers: pointerup + click fallback
   node.each(function(d) {
@@ -376,6 +464,7 @@ function renderTreeFallback(rootNode) {
     txt.setAttribute("y", "6");
     txt.setAttribute("text-anchor", "middle");
     txt.setAttribute("fill", "#fff");
+    txt.setAttribute("font-weight", "700");
     txt.style.fontSize = "12px";
     txt.textContent = (node.usuario || "").length > 12 ? node.usuario.slice(0, 10) + "…" : (node.usuario || "");
     txt.setAttribute("pointer-events", "none");
@@ -426,12 +515,35 @@ function createInfoCard() {
       <p style="margin:0 0 6px 0;"><strong>Estado:</strong> <span id="ic-state"></span></p>
       <p style="margin:0 0 6px 0;"><strong>Puntos:</strong> <span id="ic-points"></span></p>
       <div style="margin-top:8px; text-align:right;">
+        <button id="ic-view-network" class="btn" style="margin-right:8px;">Ver red</button>
         <button id="ic-close" class="btn">Cerrar</button>
       </div>
     `;
     document.body.appendChild(el);
     const closeBtn = el.querySelector("#ic-close");
     if (closeBtn) closeBtn.addEventListener("click", () => el.style.display = "none");
+    const viewBtn = el.querySelector("#ic-view-network");
+    if (viewBtn) {
+      viewBtn.addEventListener("click", async () => {
+        // el.dataset.usuario será establecido por showInfoCard antes de mostrar
+        const usuario = el.dataset.usuario;
+        if (!usuario) return alert('Usuario no disponible');
+        try {
+          // guardar root actual en stack para poder volver
+          if (typeof CURRENT_ROOT === 'string' && CURRENT_ROOT) NAV_STACK.push(CURRENT_ROOT);
+          const newRoot = await buildUnilevelTree(usuario);
+          if (newRoot) {
+            renderTree(newRoot);
+            el.style.display = 'none';
+          } else {
+            alert('No se pudo cargar la red de ' + usuario);
+          }
+        } catch (err) {
+          console.error('Error al cargar la red:', err);
+          alert('Error al cargar la red');
+        }
+      });
+    }
   }
   return el;
 }
@@ -444,6 +556,8 @@ function showInfoCard(node, event) {
   const stateEl = el.querySelector("#ic-state");
   const pointsEl = el.querySelector("#ic-points");
   if (nameEl) nameEl.textContent = node.nombre || node.usuario || "";
+  // guardar usuario en dataset para que el botón 'Ver red' pueda usarlo
+  el.dataset.usuario = node.usuario || '';
   if (userEl) userEl.textContent = `Código: ${node.usuario || ""}`;
   if (stateEl) stateEl.innerHTML = node.active ? '<span style="color:#28a745">Activo</span>' : '<span style="color:#666">Inactivo</span>';
   if (pointsEl) pointsEl.textContent = `${node.puntos || 0} pts`;
