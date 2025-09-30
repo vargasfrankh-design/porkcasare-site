@@ -10,7 +10,7 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-const LEVEL_PERCENTS = [0.68, 0.68, 0.68, 0.68, 0.68];
+const LEVEL_PERCENTS = [0.068, 0.068, 0.068, 0.068, 0.068];
 const POINT_VALUE = 3800;
 
 async function findUserByUsername(username) {
