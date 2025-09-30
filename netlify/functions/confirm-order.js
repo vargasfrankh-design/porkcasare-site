@@ -10,7 +10,7 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-const LEVEL_PERCENTS = [0.05, 0.03, 0.02, 0.01, 0.005];
+const LEVEL_PERCENTS = [0.68, 0.68, 0.68, 0.68, 0.68];
 const POINT_VALUE = 3800;
 
 async function findUserByUsername(username) {
@@ -134,7 +134,7 @@ exports.handler = async (event) => {
           const sponsor = await findUserByUsername(sponsorCode);
           if (sponsor) {
             const sponsorRef = db.collection('usuarios').doc(sponsor.id);
-            const bonusPoints = 15;
+            const bonusPoints = 13;
             const bonusValue = bonusPoints * POINT_VALUE;
 
             await sponsorRef.update({
