@@ -10,6 +10,7 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
+// Cada nivel recibe 6.8% del valor monetario calculado sobre la base de puntos
 const LEVEL_PERCENTS = [0.068, 0.068, 0.068, 0.068, 0.068];
 const POINT_VALUE = 3800;
 
@@ -97,7 +98,7 @@ exports.handler = async (event) => {
           })
         });
 
-        // si alcanza >= 50, marcar initialPackBought
+        // si alcanza >= 50, marcar initialPackBought (esto NO dispara bono; bono solo si la compra es de 50 en una sola orden)
         const currentPersonal = Number(buyerSnap.data().personalPoints || buyerSnap.data().puntos || 0);
         const newPersonal = currentPersonal + points;
         if (newPersonal >= 50 && !(buyerSnap.data() && buyerSnap.data().initialPackBought)) {
@@ -124,6 +125,7 @@ exports.handler = async (event) => {
       }
 
       // 3) Bono inicial (fuera de la transacción): si aplica
+      // Condición modificada: el bono de 13 puntos (49,400) se paga SOLO cuando la compra es de 50 puntos EN UNA SOLA ORDEN
       try {
         const buyerDoc = await db.collection('usuarios').doc(buyerUid).get();
         const buyerData = buyerDoc.exists ? buyerDoc.data() : null;
@@ -135,7 +137,7 @@ exports.handler = async (event) => {
           if (sponsor) {
             const sponsorRef = db.collection('usuarios').doc(sponsor.id);
             const bonusPoints = 13;
-            const bonusValue = bonusPoints * POINT_VALUE;
+            const bonusValue = bonusPoints * POINT_VALUE; // 13 * 3800 = 49,400
 
             await sponsorRef.update({
               balance: admin.firestore.FieldValue.increment(bonusValue),
@@ -164,6 +166,11 @@ exports.handler = async (event) => {
         let currentSponsorCode = buyerDoc2.exists ? (buyerDoc2.data().patrocinador || null) : null;
         const buyerUsername = buyerDoc2.exists ? (buyerDoc2.data().usuario || '') : '';
 
+        // Nuevo comportamiento: si la compra es de 50 puntos (comprados EN UNA SOLA ORDEN),
+        // usar 10 puntos como base para calcular comisiones multinivel.
+        // Para compras de otras cantidades, la base es 'points' tal como antes.
+        const basePointsForCommission = (points === 50) ? 10 : points;
+
         for (let level = 0; level < LEVEL_PERCENTS.length; level++) {
           if (!currentSponsorCode) break;
           const sponsor = await findUserByUsername(currentSponsorCode);
@@ -171,29 +178,32 @@ exports.handler = async (event) => {
 
           const sponsorRef = db.collection('usuarios').doc(sponsor.id);
           const percent = LEVEL_PERCENTS[level] || 0;
-          const commissionValue = Math.round(points * POINT_VALUE * percent);
+
+          // calcular comisión usando la base ajustada
+          const commissionValue = Math.round(basePointsForCommission * POINT_VALUE * percent);
 
           await sponsorRef.update({
-            teamPoints: admin.firestore.FieldValue.increment(points),
+            // Se incrementa teamPoints en la misma base usada para calcular la comisión.
+            // Esto mantiene coherencia entre puntos de equipo y la comisión pagada.
+            teamPoints: admin.firestore.FieldValue.increment(basePointsForCommission),
             balance: admin.firestore.FieldValue.increment(commissionValue),
             history: admin.firestore.FieldValue.arrayUnion({
               action: `Comisión nivel ${level + 1} por compra de ${buyerUsername}`,
               amount: commissionValue,
-              points,
+              points: basePointsForCommission,
               orderId,
               date: new Date().toISOString()
             })
           });
 
+          // seguir subiendo en la cadena de patrocinio
           currentSponsorCode = sponsor.data.patrocinador || null;
         }
       } catch (e) {
         console.warn('Error durante la distribución multinivel (no crítico):', e);
       }
 
-      // 5) Historial del comprador (ya agregado dentro de la transacción, pero mantengo este update si quieres un registro adicional)
-      // NOTA: ya pusimos la history dentro de la transacción; evitamos duplicados intencionales.
-
+      // 5) Historial del comprador (ya agregado dentro de la transacción; evitamos duplicados intencionales)
       return { statusCode: 200, body: JSON.stringify({ message: 'Orden confirmada y puntos distribuidos' }) };
     }
 
