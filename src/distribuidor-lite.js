@@ -58,14 +58,3 @@ document.getElementById('btnRecompra').addEventListener('click', async ()=>{
     window.location = 'distribuidor.html';
   }
 })();
-
-
-
-// Added simulateTransaction helper
-export async function simulateTransaction(userId, type='recompra', pts=0, amount=0) {
-  const payload = { user_id: userId, type, pts, amount };
-  const res = await fetch('/.netlify/functions/get-payment', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
-  });
-  return res.json();
-}
