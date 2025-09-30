@@ -203,3 +203,33 @@ exports.handler = async (event) => {
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 };
+
+
+/* ---- PATCHED SECTION (added by assistant) ---- */
+// netlify/functions/confirm-order.js
+// Adaptado para usar process-commissions en lugar de depender de Mercado Pago
+
+const { createCommissionsForTransaction } = require('./process-commissions');
+
+exports.handler = async function(event) {
+  if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
+  try {
+    const body = JSON.parse(event.body || '{}');
+    // body: { user_id, type, pts, amount, external_id }
+    if (!body.user_id) return { statusCode: 400, body: JSON.stringify({ error: 'user_id requerido' }) };
+
+    const txObj = {
+      id: body.external_id || null,
+      user_id: body.user_id,
+      type: body.type || 'recompra',
+      pts: body.pts || 0,
+      amount: body.amount || 0
+    };
+
+    const summary = await createCommissionsForTransaction(txObj);
+    return { statusCode: 200, body: JSON.stringify({ ok: true, summary }) };
+  } catch (err) {
+    console.error('confirm-order error', err);
+    return { statusCode: 500, body: JSON.stringify({ ok: false, error: err.message }) };
+  }
+};
