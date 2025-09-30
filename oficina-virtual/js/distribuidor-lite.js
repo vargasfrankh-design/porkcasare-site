@@ -327,26 +327,3 @@ function escapeHtml(str = "") {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
-
-
-
-
-/* ---- ADDED: simulate signup/recompra helpers ---- */
-async function simulateSignup(userId) {
-  const payload = { user_id: userId, type: 'signup', pts: 50, amount: 300000 };
-  const res = await fetch('/.netlify/functions/get-payment', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
-  });
-  return res.json();
-}
-async function simulateRecompra(userId) {
-  const payload = { user_id: userId, type: 'recompra', pts: 10, amount: 60000 };
-  const res = await fetch('/.netlify/functions/get-payment', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
-  });
-  return res.json();
-}
-if (typeof window !== 'undefined') {
-  window.simulateSignup = simulateSignup;
-  window.simulateRecompra = simulateRecompra;
-}
