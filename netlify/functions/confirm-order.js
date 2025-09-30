@@ -1,5 +1,6 @@
 // netlify/functions/confirm-order.js
 const admin = require('firebase-admin');
+const { createCommissionsForTransaction } = require('./process-commissions');
 
 if (!admin.apps.length) {
   const saBase64 = process.env.FIREBASE_ADMIN_SA || '';
@@ -123,41 +124,21 @@ exports.handler = async (event) => {
         console.warn('Warning: no se pudo crear confirmation doc', e);
       }
 
-      // 3) Bono inicial (fuera de la transacción): si aplica
-      try {
-        const buyerDoc = await db.collection('usuarios').doc(buyerUid).get();
-        const buyerData = buyerDoc.exists ? buyerDoc.data() : null;
-        const buyerUsername = buyerData?.usuario;
-        let sponsorCode = buyerData?.patrocinador || null;
-
-        if (points === 50 && order.isInitial && sponsorCode && !order.initialBonusPaid) {
-          const sponsor = await findUserByUsername(sponsorCode);
-          if (sponsor) {
-            const sponsorRef = db.collection('usuarios').doc(sponsor.id);
-            const bonusPoints = 15;
-            const bonusValue = bonusPoints * POINT_VALUE;
-
-            await sponsorRef.update({
-              balance: admin.firestore.FieldValue.increment(bonusValue),
-              teamPoints: admin.firestore.FieldValue.increment(bonusPoints),
-              history: admin.firestore.FieldValue.arrayUnion({
-                action: `Bono inicial por compra de ${buyerUsername}`,
-                amount: bonusValue,
-                points: bonusPoints,
-                orderId,
-                date: new Date().toISOString()
-              })
-            });
-
-            // marcar orden como bonificada
-            await orderRef.update({ initialBonusPaid: true });
-          }
-        }
-      } catch (e) {
-        console.warn('Error procesando bono inicial (no crítico):', e);
-      }
-
-      // 4) Distribución multinivel (hasta 5 niveles)
+      // 3 & 4) Reemplazo: crear comisiones según nuevo spec (Bono de Inicio Rápido + Pool de Recompra)
+// Usamos createCommissionsForTransaction para generar Transaction + Commission atómicamente.
+try {
+  const txType = (points === 50 && order.isInitial) ? 'signup' : 'recompra';
+  await createCommissionsForTransaction({
+    id: orderId,
+    user_id: buyerUid,
+    type: txType,
+    pts: points,
+    amount: order.price || order.amount || 0
+  });
+} catch (e) {
+  console.warn('Error creando comisiones (no crítico):', e);
+}
+ Distribución multinivel (hasta 5 niveles)
       try {
         // obtener sponsor chain usando buyer's sponsorCode a partir del buyer doc
         const buyerDoc2 = await db.collection('usuarios').doc(buyerUid).get();
@@ -201,35 +182,5 @@ exports.handler = async (event) => {
   } catch (err) {
     console.error("🔥 Error confirm-order:", err);
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
-  }
-};
-
-
-/* ---- PATCHED SECTION (added by assistant) ---- */
-// netlify/functions/confirm-order.js
-// Adaptado para usar process-commissions en lugar de depender de Mercado Pago
-
-const { createCommissionsForTransaction } = require('./process-commissions');
-
-exports.handler = async function(event) {
-  if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
-  try {
-    const body = JSON.parse(event.body || '{}');
-    // body: { user_id, type, pts, amount, external_id }
-    if (!body.user_id) return { statusCode: 400, body: JSON.stringify({ error: 'user_id requerido' }) };
-
-    const txObj = {
-      id: body.external_id || null,
-      user_id: body.user_id,
-      type: body.type || 'recompra',
-      pts: body.pts || 0,
-      amount: body.amount || 0
-    };
-
-    const summary = await createCommissionsForTransaction(txObj);
-    return { statusCode: 200, body: JSON.stringify({ ok: true, summary }) };
-  } catch (err) {
-    console.error('confirm-order error', err);
-    return { statusCode: 500, body: JSON.stringify({ ok: false, error: err.message }) };
   }
 };
