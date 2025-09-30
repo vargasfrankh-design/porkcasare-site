@@ -637,17 +637,3 @@ export { addEarnings, cobrarPending, attachRealtimeForUserBoth, normalizeEntry }
     window.addEventListener('DOMContentLoaded', setup);
   }
 })();
-
-
-
-
-/* ---- ADDED: helper to create transactions and commissions (simulator) ---- */
-async function createTransactionAndCommissions(payload) {
-  const res = await fetch('/.netlify/functions/get-payment', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  return res.json();
-}
-if (typeof window !== 'undefined') window.createTransactionAndCommissions = createTransactionAndCommissions;
