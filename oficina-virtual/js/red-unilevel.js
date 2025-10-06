@@ -961,3 +961,429 @@ export {
   createInfoCard
 };
 
+
+
+/* ====== APPENDED PATCH (DO NOT REMOVE) ====== */
+
+/* ======= PATCH: Network tree improvements (added by assistant) =======
+   - Default visible depth control (Nivel 1..N)
+   - Expand/collapse per-node (+) to show hidden children
+   - Info-card displays Teléfono and Ciudad (tries multiple field names)
+   - Overrides are assigned to window.* to avoid const/function redeclaration issues
+   ====================================================================== */
+
+(function(){
+  // Safe globals
+  window.NETWORK_VISIBLE_DEPTH = window.NETWORK_VISIBLE_DEPTH || 2;
+  window.NETWORK_EXPANDED_NODES = window.NETWORK_EXPANDED_NODES || new Set();
+  window.LAST_NETWORK_TREE = window.LAST_NETWORK_TREE || null;
+
+  // Utility: safe getter for phone/city from various possible field names
+  function _getPhoneFromNode(data){
+    if(!data) return '';
+    return data.telefono || data.phone || data.celular || data.phoneNumber || data.tel || '';
+  }
+  function _getCityFromNode(data){
+    if(!data) return '';
+    return data.ciudad || data.city || data.localidad || data.location || '';
+  }
+
+  // Create / reuse an info-card element in the DOM
+  window.createInfoCard = window.createInfoCard || function createInfoCard(){
+    var mount = document.getElementById('network-info-card');
+    if (mount) return mount;
+    mount = document.createElement('div');
+    mount.id = 'network-info-card';
+    mount.style.position = 'absolute';
+    mount.style.right = '18px';
+    mount.style.top = '12px';
+    mount.style.minWidth = '240px';
+    mount.style.maxWidth = '320px';
+    mount.style.zIndex = 9999;
+    mount.style.background = 'white';
+    mount.style.borderRadius = '8px';
+    mount.style.boxShadow = '0 6px 18px rgba(0,0,0,0.12)';
+    mount.style.padding = '12px';
+    mount.style.fontFamily = 'Arial, Helvetica, sans-serif';
+    mount.style.display = 'none';
+    mount.innerHTML = `
+      <h4 id="ic-name" style="margin:0 0 8px 0;font-size:16px;"></h4>
+      <p id="ic-user" style="margin:0 0 6px 0;color:#666;font-size:13px;"></p>
+      <p id="ic-phone" style="margin:0 0 6px 0;"><strong>Teléfono:</strong> <span id="ic-phone-value">—</span></p>
+      <p id="ic-city" style="margin:0 0 6px 0;"><strong>Ciudad:</strong> <span id="ic-city-value">—</span></p>
+      <p style="margin:0 0 6px 0;"><strong>Estado:</strong> <span id="ic-state"></span></p>
+      <p style="margin:0 0 6px 0;"><strong>Puntos:</strong> <span id="ic-points"></span></p>
+      <div style="margin-top:8px; text-align:right;">
+        <button id="ic-view-network" class="btn" style="margin-right:8px;padding:6px 8px;font-size:13px;">Ver red</button>
+        <button id="ic-close" class="btn" style="padding:6px 8px;font-size:13px;">Cerrar</button>
+      </div>
+    `;
+    document.body.appendChild(mount);
+
+    mount.querySelector('#ic-close').addEventListener('click', function(){
+      mount.style.display = 'none';
+    });
+
+    // 'Ver red' button will try to call a function buildUnilevelTree if present
+    mount.querySelector('#ic-view-network').addEventListener('click', async function(){
+      var userId = mount.getAttribute('data-userid');
+      if(!userId) return;
+      if(typeof window.buildUnilevelTree === 'function'){
+        try{
+          var tree = await window.buildUnilevelTree(userId);
+          if(tree && typeof window.renderTree === 'function'){
+            // push breadcrumb path
+            if(!window.NAV_STACK) window.NAV_STACK = [];
+            window.NAV_STACK.push(userId);
+            window.renderTree(tree);
+          }
+        }catch(e){
+          console.error('Error al construir red del usuario:', e);
+          alert('No se pudo cargar la red del usuario');
+        }
+      } else {
+        alert('Función de construcción de red no disponible.');
+      }
+    });
+
+    return mount;
+  };
+
+  // Show info card for a node (node may be raw data, or {data:...}, or firestore doc-like)
+  window.showInfoCard = window.showInfoCard || function showInfoCard(node, event){
+    var el = window.createInfoCard();
+    if(!el) return;
+    var data = node;
+    if(node && node.data) data = node.data;
+    // try to pluck displayable fields
+    var name = data && (data.nombre || data.name || data.usuario || data.username || data.displayName) || '—';
+    var user = data && (data.usuario || data.username || data.id) || (data && data.id) || '—';
+    var phone = _getPhoneFromNode(data) || '—';
+    var city = _getCityFromNode(data) || '—';
+    var active = (data && (data.active !== undefined ? data.active : (data.estado || data.status))) ? 'Activo' : 'Inactivo';
+    var puntos = (data && (data.puntos || data.points || data.personalPoints)) || 0;
+
+    el.style.display = 'block';
+    el.setAttribute('data-userid', data && (data.id || data.usuario || data.userId || data.uid) || '');
+    el.querySelector('#ic-name').textContent = name;
+    el.querySelector('#ic-user').textContent = user;
+    el.querySelector('#ic-phone-value').textContent = phone;
+    el.querySelector('#ic-city-value').textContent = city;
+    el.querySelector('#ic-state').textContent = active;
+    el.querySelector('#ic-points').textContent = puntos;
+
+    // position near event if provided
+    try{
+      if(event && event.clientX !== undefined && event.clientY !== undefined){
+        // place to the right with small offset
+        var x = event.clientX + 12;
+        var y = event.clientY + 12;
+        // keep inside viewport
+        var rectW = el.offsetWidth || 280;
+        var rectH = el.offsetHeight || 160;
+        if(x + rectW > window.innerWidth - 12) x = window.innerWidth - rectW - 12;
+        if(y + rectH > window.innerHeight - 12) y = window.innerHeight - rectH - 12;
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+        el.style.position = 'fixed';
+      } else {
+        // default top-right
+        el.style.position = 'absolute';
+        el.style.right = '18px';
+        el.style.top = '12px';
+      }
+    }catch(e){ console.warn('posicion info card', e); }
+  };
+
+  // RenderTree override attached to window.renderTree
+  window.renderTree = window.renderTree || function renderTree(rootNode) {
+    // Minimal guards
+    var treeWrap = document.getElementById("treeWrap") || document.body;
+    // store last tree
+    window.LAST_NETWORK_TREE = rootNode;
+    // ensure NAV_STACK exists
+    window.NAV_STACK = window.NAV_STACK || [];
+
+    // create breadcrumbs/control container
+    var bc = document.getElementById('network-breadcrumbs');
+    if(!bc){
+      bc = document.createElement('div');
+      bc.id = 'network-breadcrumbs';
+      bc.style.position = 'absolute';
+      bc.style.left = '12px';
+      bc.style.top = '12px';
+      bc.style.zIndex = 9998;
+      bc.style.background = 'rgba(255,255,255,0.95)';
+      bc.style.padding = '6px 10px';
+      bc.style.borderRadius = '8px';
+      bc.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+      bc.style.fontSize = '13px';
+      bc.style.display = 'flex';
+      bc.style.alignItems = 'center';
+      bc.style.gap = '8px';
+      bc.style.flexWrap = 'wrap';
+      treeWrap.style.position = treeWrap.style.position || 'relative';
+      treeWrap.appendChild(bc);
+    }
+    // refresh content
+    bc.innerHTML = '';
+    // back button
+    if(window.NAV_STACK.length > 0){
+      var back = document.createElement('button');
+      back.textContent = '← Volver';
+      back.className = 'btn';
+      back.style.padding = '6px 8px';
+      back.style.fontSize = '13px';
+      back.addEventListener('click', function(){
+        var last = window.NAV_STACK.pop();
+        if(!last) return;
+        if(typeof window.buildUnilevelTree === 'function'){
+          window.buildUnilevelTree(last).then(function(t){
+            if(t && typeof window.renderTree === 'function') window.renderTree(t);
+          }).catch(function(e){ console.error(e); alert('Error al volver'); });
+        }
+      });
+      bc.appendChild(back);
+    }
+    var path = document.createElement('div');
+    path.style.fontWeight = '600';
+    path.textContent = (window.NAV_STACK.length ? window.NAV_STACK.join(' > ') + ' > ' : '') + (rootNode && (rootNode.usuario || rootNode.name || rootNode.id) || 'Root');
+    bc.appendChild(path);
+
+    // level controls
+    var controls = document.createElement('div');
+    controls.style.display = 'flex';
+    controls.style.gap = '6px';
+    controls.style.marginLeft = '8px';
+    var DEPTH_LIMIT = 6;
+    for(var i=1;i<=DEPTH_LIMIT;i++){
+      (function(level){
+        var btn = document.createElement('button');
+        btn.textContent = 'Nivel ' + level;
+        btn.className = 'btn network-level-btn';
+        btn.style.padding = '6px 8px';
+        btn.style.fontSize = '12px';
+        if(window.NETWORK_VISIBLE_DEPTH === level){
+          btn.style.background = '#2b9df3';
+          btn.style.color = '#fff';
+        }
+        btn.addEventListener('click', function(){
+          window.NETWORK_VISIBLE_DEPTH = level;
+          // render again with same tree
+          if(window.LAST_NETWORK_TREE && typeof window.renderTree === 'function'){
+            window.renderTree(window.LAST_NETWORK_TREE);
+          }
+        });
+        controls.appendChild(btn);
+      })(i);
+    }
+    bc.appendChild(controls);
+
+    // Clear old SVG if any
+    var oldSvg = treeWrap.querySelector('svg');
+    if(oldSvg) oldSvg.remove();
+
+    // If no d3, fallback: simple list
+    var d3g = (typeof d3 !== 'undefined') ? d3 : null;
+    if(!d3g){
+      // simple fallback: list nodes up to depth
+      var list = document.createElement('div');
+      list.style.padding = '12px';
+      list.style.maxHeight = (treeWrap.clientHeight || 400) + 'px';
+      list.style.overflow = 'auto';
+      treeWrap.appendChild(list);
+      var q = [ { node: rootNode, depth: 0 } ];
+      while(q.length){
+        var item = q.shift();
+        if(item.depth > window.NETWORK_VISIBLE_DEPTH) continue;
+        var line = document.createElement('div');
+        line.style.margin = '6px 0';
+        line.textContent = (new Array(item.depth+1).join('  ')) + (item.node && (item.node.usuario || item.node.nombre || item.node.id) || '—');
+        line.style.cursor = 'pointer';
+        line.addEventListener('click', function(ev){
+          window.showInfoCard(item.node, ev);
+        });
+        list.appendChild(line);
+        if(item.node && item.node.children && item.node.children.length){
+          for(var k=0;k<item.node.children.length;k++){
+            q.push({ node: item.node.children[k], depth: item.depth+1 });
+          }
+        }
+      }
+      return;
+    }
+
+    // Use d3 tree layout
+    var contW = Math.max(treeWrap.clientWidth || 800, 600);
+    var contH = Math.max(treeWrap.clientHeight || 600, 400);
+    var margin = { top: 20, right: 20, bottom: 20, left: 20 };
+    var width = contW - margin.left - margin.right;
+    var height = contH - margin.top - margin.bottom;
+
+    var svg = d3g.select(treeWrap)
+      .append('svg')
+      .attr('viewBox', '0 0 ' + contW + ' ' + contH)
+      .attr('preserveAspectRatio','xMidYMin meet')
+      .style('width','100%')
+      .style('height','100%')
+      .style('display','block')
+      .style('touch-action','manipulation');
+
+    var defs = svg.append('defs');
+    var filter = defs.append('filter').attr('id','node-drop').attr('x','-50%').attr('y','-50%').attr('width','200%').attr('height','200%');
+    filter.append('feDropShadow').attr('dx',0).attr('dy',3).attr('stdDeviation',4).attr('flood-color','#000').attr('flood-opacity',0.18);
+
+    var g = svg.append('g').attr('transform','translate(' + margin.left + ',' + margin.top + ')');
+
+    var zoom = d3g.zoom().scaleExtent([0.4,2]).on('zoom', function(event){ g.attr('transform', event.transform); });
+    svg.call(zoom).call(zoom.transform, d3g.zoomIdentity.translate(margin.left, margin.top));
+    svg.on('dblclick.zoom', null);
+
+    // Build hierarchy and layout
+    var root = d3g.hierarchy(rootNode, function(d){ return d.children || []; });
+    var treeLayout = d3g.tree().size([width, height - 40]);
+    treeLayout(root);
+
+    // center-ish
+    try {
+      var TOP_MARGIN = 60;
+      var shiftX = (width / 2) - root.x;
+      var shiftY = TOP_MARGIN - root.y;
+      root.each(function(d){ d.x = d.x + shiftX; d.y = d.y + shiftY; });
+    } catch(e){ console.warn(e); }
+
+    // decide visibility
+    function isNodeVisible(d){
+      if(!d) return false;
+      if(d.depth <= (window.NETWORK_VISIBLE_DEPTH || 2)) return true;
+      var expanded = window.NETWORK_EXPANDED_NODES || new Set();
+      var cur = d;
+      while(cur){
+        if(cur.data && expanded.has(cur.data.id)) return true;
+        cur = cur.parent;
+      }
+      return false;
+    }
+
+    // LINKS
+    var links = root.links();
+    var link = g.selectAll('.link').data(links).enter().append('path')
+      .attr('class','link-line')
+      .attr('d', function(d){
+        var sx = d.source.x;
+        var sy = d.source.y;
+        var tx = d.target.x;
+        var ty = d.target.y;
+        return 'M' + sx + ',' + (sy + 30) + ' C ' + sx + ',' + ((sy+ty)/2) + ' ' + tx + ',' + ((sy+ty)/2) + ' ' + tx + ',' + (ty - 30);
+      })
+      .attr('fill','none').attr('stroke','#d0d0d0');
+
+    link.attr('stroke-opacity',0).transition().duration(600).attr('stroke-opacity',1);
+
+    // NODES
+    var node = g.selectAll('.node').data(root.descendants()).enter().append('g')
+      .attr('class', function(d){ return 'node depth-' + d.depth; })
+      .attr('transform', function(d){ return 'translate(' + d.x + ',' + d.y + ')'; })
+      .style('cursor','pointer')
+      .style('touch-action','manipulation');
+
+    node.append('circle').attr('r',40).attr('fill','transparent').attr('pointer-events','auto');
+
+    node.append('circle')
+      .attr('r', function(d){ return d.depth === 0 ? 36 : Math.max(20, 34 - d.depth*2); })
+      .attr('filter','url(#node-drop)')
+      .attr('fill', function(d){ return (d.data && d.data.usuario && (d.data.usuario === (rootNode.usuario || rootNode.id))) ? '#2b9df3' : (d.data && d.data.active ? '#28a745' : '#bfbfbf'); })
+      .attr('stroke','#ffffff').attr('stroke-width',3).attr('pointer-events','none');
+
+    node.append('text')
+      .attr('y',6)
+      .attr('text-anchor','middle')
+      .attr('fill','#fff')
+      .style('font-size','13px')
+      .style('font-weight','700')
+      .text(function(d){ var u = (d.data && (d.data.usuario || d.data.nombre || d.data.name)) || ''; return u.length > 12 ? u.slice(0,10) + '…' : u; });
+
+    // show/hide based on isNodeVisible
+    node.style('display', function(d){ return isNodeVisible(d) ? null : 'none'; });
+    link.style('display', function(l){ return (isNodeVisible(l.source) && isNodeVisible(l.target)) ? null : 'none'; });
+
+    // add expander for nodes with hidden children
+    node.each(function(d){
+      var thisNode = d3g.select(this);
+      var hasChildren = d.children && d.children.length;
+      var childHidden = false;
+      if(hasChildren){
+        for(var i=0;i<d.children.length;i++){
+          if(!isNodeVisible(d.children[i])) { childHidden = true; break; }
+        }
+      }
+      if(hasChildren && childHidden){
+        var exp = thisNode.append('g').attr('class','expander').style('cursor','pointer').attr('transform','translate(28,-28)');
+        exp.append('circle').attr('r',10).attr('fill','#ffffff').attr('stroke','#2b9df3').attr('stroke-width',2);
+        var sign = (window.NETWORK_EXPANDED_NODES && window.NETWORK_EXPANDED_NODES.has(d.data && d.data.id)) ? '−' : '+';
+        exp.append('text').attr('y',4).attr('text-anchor','middle').attr('fill','#2b9df3').style('font-size','12px').text(sign);
+        exp.on('pointerup', function(ev){
+          ev.stopPropagation();
+          if(!window.NETWORK_EXPANDED_NODES) window.NETWORK_EXPANDED_NODES = new Set();
+          var id = d.data && d.data.id;
+          if(!id) return;
+          if(window.NETWORK_EXPANDED_NODES.has(id)) window.NETWORK_EXPANDED_NODES.delete(id);
+          else window.NETWORK_EXPANDED_NODES.add(id);
+          // re-render
+          if(window.LAST_NETWORK_TREE) window.renderTree(window.LAST_NETWORK_TREE);
+        });
+      }
+    });
+
+    // handlers to open info card
+    node.each(function(d){
+      var dom = this;
+      var handler = function(e){
+        try{ e.preventDefault(); }catch(err){}
+        try{ e.stopPropagation(); }catch(err){}
+        window.showInfoCard(d.data, e);
+      };
+      dom.addEventListener('pointerup', handler);
+      dom.addEventListener('click', handler);
+    });
+
+    // entrance animation
+    node.attr('opacity',0).attr('transform', function(d){ return 'translate(' + d.x + ',' + (d.y+18) + ')'; })
+      .transition().duration(600).ease(d3g.easeCubic).attr('opacity',1).attr('transform', function(d){ return 'translate(' + d.x + ',' + d.y + ')'; });
+
+    // force repaint iOS
+    try { svg.node().getBoundingClientRect(); svg.style('display','none'); requestAnimationFrame(function(){ svg.style('display','block'); }); } catch(e){}
+  }; // end renderTree override
+
+  // Helpful: if developer code had a buildUnilevelTree that created nodes, we try to normalize phone/city on the constructed tree.
+  // We wrap original if present so behavior is preserved.
+  if (typeof window.buildUnilevelTree === 'function') {
+    var _origBuild = window.buildUnilevelTree;
+    window.buildUnilevelTree = async function(rootId){
+      var tree = await _origBuild(rootId);
+      if(!tree) return tree;
+      // Depth-first walk to ensure phone/city fields exist on each node (if data available)
+      function walk(n){
+        if(!n) return;
+        if(n.data){
+          // attach shorthand fields
+          if(!n.telefono) n.telefono = _getPhoneFromNode(n.data);
+          if(!n.ciudad) n.ciudad = _getCityFromNode(n.data);
+          // also normalize id/name
+          if(!n.id) n.id = n.data.id || n.data.uid || n.data.usuario || n.data.userId || n.data.username;
+          if(!n.nombre) n.nombre = n.data.nombre || n.data.name || n.data.usuario;
+        } else {
+          // try other common properties
+          if(!n.telefono) n.telefono = _getPhoneFromNode(n);
+          if(!n.ciudad) n.ciudad = _getCityFromNode(n);
+        }
+        if(n.children && n.children.length){
+          for(var i=0;i<n.children.length;i++) walk(n.children[i]);
+        }
+      }
+      walk(tree);
+      return tree;
+    };
+  }
+
+})(); // end IIFE
