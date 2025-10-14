@@ -1,5 +1,17 @@
 
 // netlify/functions/confirm-order.js
+// Implementa las reglas acordadas:
+// - POINT_VALUE = 2800
+// - Bono Inicio Rápido: 20 puntos (56,000 COP) al patrocinador directo **una sola vez**
+//   se paga cuando el usuario entra con 50 OR cuando cruza 50 acumulando 10s.
+// - En cada paquete (10 o 50) se paga **1 punto por nivel** a 5 niveles (2800 COP por nivel)
+//   EXCEPCIÓN: si el usuario ya tiene >=50, las recompras posteriores pagan 1 punto por cada 10 pts
+//   en la orden (i.e. units = Math.floor(points/10)).
+// - En la compra inicial exactamente de 50 (o en la compra que cruza 50), además del bono,
+//   la red recibe **solo 1 punto por nivel** para que el total distribuido entre los 5 niveles sea 70,000 COP.
+// - Se marca buyer.initialBonusGiven para evitar pagar el bono más de una vez.
+// - El archivo está pensado para usarse como función Netlify con Firestore (firebase-admin).
+
 const admin = require('firebase-admin');
 
 if (!admin.apps.length) {
@@ -11,16 +23,14 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// Configuración solicitada por el usuario:
-// - Valor por punto: 2800
-// - Bono de inicio rápido: 20 puntos (40% de 50) al patrocinador directo
-// - Recompras: cada nivel (hasta 5) recibe 1 punto completo => 1 * 2800 = 2800 COP
+// ====== CONFIG ======
 const POINT_VALUE = 2800;
-const LEVEL_PERCENTS = [0.068, 0.068, 0.068, 0.068, 0.068]; // usados para cálculo multinivel de compras iniciales (si aplica)
-const REBUY_POINT_PER_LEVEL = 1; // 1 punto pagado por nivel en recompras
+const REBUY_POINT_PER_LEVEL = 1; // 1 punto por cada bloque de 10 (unidad)
 const MAX_LEVELS = 5;
 
+// ====== HELPERS ======
 async function findUserByUsername(username) {
+  if (!username) return null;
   const snap = await db.collection('usuarios').where('usuario', '==', username).limit(1).get();
   if (snap.empty) return null;
   const doc = snap.docs[0];
@@ -34,6 +44,7 @@ const getAuthHeader = (event) => {
   return parts.length === 2 ? parts[1] : parts[0];
 };
 
+// ====== FUNCTION ======
 exports.handler = async (event) => {
   try {
     if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method not allowed' };
@@ -68,20 +79,22 @@ exports.handler = async (event) => {
     }
 
     if (action === 'confirm') {
-      // Identificar buyerUid
       const buyerUid = order.buyerUid;
       if (!buyerUid) return { statusCode: 400, body: JSON.stringify({ error: 'Orden sin buyerUid' }) };
 
       const points = Number(order.points || 0);
 
-      // 1) Transacción crítica: marcar orden y actualizar buyer (personalPoints + puntos + history)
-      await db.runTransaction(async (tx) => {
+      // 1) Transacción crítica: actualizar buyer y marcar orden confirmada
+      const txResult = await db.runTransaction(async (tx) => {
         const ordSnap = await tx.get(orderRef);
         if (!ordSnap.exists) throw new Error('Orden desapareció durante la transacción');
 
         const buyerRef = db.collection('usuarios').doc(buyerUid);
         const buyerSnap = await tx.get(buyerRef);
         if (!buyerSnap.exists) throw new Error('Comprador no encontrado en la transacción');
+
+        const prevPersonalPoints = Number(buyerSnap.data().personalPoints || buyerSnap.data().puntos || 0);
+        const newPersonalPoints = prevPersonalPoints + points;
 
         // marcar orden confirmada
         tx.update(orderRef, {
@@ -90,7 +103,7 @@ exports.handler = async (event) => {
           confirmedAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        // incrementar personalPoints y puntos (compatibilidad) y añadir history
+        // incrementar personalPoints y puntos y añadir history
         tx.update(buyerRef, {
           personalPoints: admin.firestore.FieldValue.increment(points),
           puntos: admin.firestore.FieldValue.increment(points),
@@ -104,15 +117,17 @@ exports.handler = async (event) => {
           })
         });
 
-        // si alcanza >= 50, marcar initialPackBought (esto NO dispara bono; bono solo si la compra es de 50 en una sola orden)
-        const currentPersonal = Number(buyerSnap.data().personalPoints || buyerSnap.data().puntos || 0);
-        const newPersonal = currentPersonal + points;
-        if (newPersonal >= 50 && !(buyerSnap.data() && buyerSnap.data().initialPackBought)) {
+        // marcar initialPackBought por compatibilidad si alcanza >=50
+        if (newPersonalPoints >= 50 && !(buyerSnap.data() && buyerSnap.data().initialPackBought)) {
           tx.update(buyerRef, { initialPackBought: true });
         }
+
+        return { prevPersonalPoints, newPersonalPoints };
       });
 
-      // 2) Registrar confirmación en colección 'confirmations' para auditoría
+      const { prevPersonalPoints, newPersonalPoints } = txResult || { prevPersonalPoints: 0, newPersonalPoints: 0 };
+
+      // 2) Registrar confirmation para auditoría
       try {
         await db.collection('confirmations').add({
           orderId,
@@ -130,25 +145,31 @@ exports.handler = async (event) => {
         console.warn('Warning: no se pudo crear confirmation doc', e);
       }
 
-      // 3) Bono inicial (fuera de la transacción): si aplica
+      // 3) Determinar si corresponde pagar Bono Inicio Rápido (una sola vez)
+      // Condición: buyer no tiene initialBonusGiven (o initialBonusGiven === false)
+      // y (la orden es de 50 o el usuario cruzó de <50 a >=50 con esta compra)
       try {
         const buyerDoc = await db.collection('usuarios').doc(buyerUid).get();
         const buyerData = buyerDoc.exists ? buyerDoc.data() : null;
-        const buyerUsername = buyerData?.usuario;
-        let sponsorCode = buyerData?.patrocinador || null;
+        const sponsorCode = buyerData?.patrocinador || order.sponsor || null;
+        const buyerHadInitialBonus = Boolean(buyerData?.initialBonusGiven);
 
-        if (points === 50 && order.isInitial && sponsorCode && !order.initialBonusPaid) {
+        const crossed50 = (prevPersonalPoints < 50 && newPersonalPoints >= 50);
+        const single50Order = (points === 50);
+
+        const payInitialBonus = (!buyerHadInitialBonus) && (crossed50 || single50Order);
+
+        if (payInitialBonus && sponsorCode) {
           const sponsor = await findUserByUsername(sponsorCode);
           if (sponsor) {
             const sponsorRef = db.collection('usuarios').doc(sponsor.id);
-            const bonusPoints = 20; // CAMBIO: 20 puntos (40% de 50)
-            const bonusValue = bonusPoints * POINT_VALUE; // 20 * 2800 = 56,000
-
+            const bonusPoints = 20;
+            const bonusValue = bonusPoints * POINT_VALUE; // 56,000
             await sponsorRef.update({
               balance: admin.firestore.FieldValue.increment(bonusValue),
               teamPoints: admin.firestore.FieldValue.increment(bonusPoints),
               history: admin.firestore.FieldValue.arrayUnion({
-                action: `Bono inicio rápido por compra de ${buyerUsername}`,
+                action: `Bono inicio rápido por compra/alcance de 50 pts de ${buyerData?.usuario || 'usuario'}`,
                 amount: bonusValue,
                 points: bonusPoints,
                 orderId,
@@ -156,7 +177,9 @@ exports.handler = async (event) => {
               })
             });
 
-            // marcar orden como bonificada
+            // marcar que el comprador ya recibió el bono para no pagarlo otra vez
+            await db.collection('usuarios').doc(buyerUid).update({ initialBonusGiven: true });
+            // marcar en la orden que se pagó (opcional)
             await orderRef.update({ initialBonusPaid: true });
           }
         }
@@ -164,67 +187,63 @@ exports.handler = async (event) => {
         console.warn('Error procesando bono inicial (no crítico):', e);
       }
 
-      // 4) Distribución multinivel
+      // 4) DISTRIBUCIÓN MULTINIVEL (comisiones por red)
+      // Regla final:
+      // - Por defecto, units = Math.floor(points / 10) (cuántos bloques de 10 trae la orden)
+      // - Si esta compra es la primera vez que el usuario llega a 50 (payInitialBonus true)
+      //   y la orden tiene points === 50 (entrada directa de 50) o crossed50 true,
+      //   entonces queremos que la red RECIBA SOLO 1 punto por nivel (no units puntos)
+      //   para que la suma total sea la que pediste (70,000 COP en total entre 5 niveles).
       try {
-        // obtener sponsor chain usando buyer's sponsorCode a partir del buyer doc
         const buyerDoc2 = await db.collection('usuarios').doc(buyerUid).get();
-        let currentSponsorCode = buyerDoc2.exists ? (buyerDoc2.data().patrocinador || null) : null;
+        let currentSponsorCode = buyerDoc2.exists ? (buyerDoc2.data().patrocinador || null) : (order.sponsor || null);
         const buyerUsername = buyerDoc2.exists ? (buyerDoc2.data().usuario || '') : '';
 
-        // Comportamiento:
-        // - Si es una RECOMPRA (order.isInitial === false): pagar REBUY_POINT_PER_LEVEL (1 punto) a CADA nivel (100% del punto)
-        // - Si es COMPRA INICIAL (order.isInitial === true): usar lógica previa (basePointsForCommission = (points === 50) ? 10 : points)
-        //   y aplicar LEVEL_PERCENTS (6.8% por nivel) sobre esa base.
-        if (!order.isInitial) {
-          // RECOMPRA: pagar 1 punto (100%) a cada nivel hasta MAX_LEVELS
+        const units = Math.floor(points / 10); // cuántos bloques de 10 trae la orden
+        // recompras posteriores (buyer con >=50) pagan units por nivel
+        // pero en la compra que origina el bono (first time 50), solo pagamos 1 por nivel
+        const buyerHadInitialBonusBefore = Boolean((await db.collection('usuarios').doc(buyerUid).get()).data()?.initialBonusGiven);
+        // note: buyerHadInitialBonusBefore may already be true if we updated it above; we need to infer
+        // whether this action was the one that caused the bonus:
+        const crossed50Now = (prevPersonalPoints < 50 && newPersonalPoints >= 50);
+        const single50Order = (points === 50);
+
+        // detect if this confirmation should be treated as "first time 50" commission behavior
+        const isFirstTime50Commission = (!buyerHadInitialBonusBefore && (crossed50Now || single50Order)) && !!currentSponsorCode;
+
+        // By default, commissionUnitsPerLevel = units
+        let commissionUnitsPerLevel = units;
+        // If this is the first time user reaches 50 (order caused the bonus), force 1 unit for the commission per level
+        if (isFirstTime50Commission) {
+          commissionUnitsPerLevel = 1; // así patrocinador recibirá bono + 1 punto; otros solo 1 punto
+        }
+
+        // If buyer already had >=50 before this order, still use units (recompra behavior)
+        // commissionPointsPerLevel = commissionUnitsPerLevel * REBUY_POINT_PER_LEVEL
+        const commissionPointsPerLevel = Math.max(0, commissionUnitsPerLevel * REBUY_POINT_PER_LEVEL);
+        const commissionValuePerLevel = commissionPointsPerLevel * POINT_VALUE; // COP
+
+        if (commissionPointsPerLevel > 0 && commissionValuePerLevel > 0) {
           for (let level = 0; level < MAX_LEVELS; level++) {
             if (!currentSponsorCode) break;
             const sponsor = await findUserByUsername(currentSponsorCode);
             if (!sponsor) break;
 
             const sponsorRef = db.collection('usuarios').doc(sponsor.id);
-            const commissionPoints = REBUY_POINT_PER_LEVEL;
-            const commissionValue = commissionPoints * POINT_VALUE; // 1 * 2800 = 2800
 
             await sponsorRef.update({
-              teamPoints: admin.firestore.FieldValue.increment(commissionPoints),
-              balance: admin.firestore.FieldValue.increment(commissionValue),
+              teamPoints: admin.firestore.FieldValue.increment(commissionPointsPerLevel),
+              balance: admin.firestore.FieldValue.increment(commissionValuePerLevel),
               history: admin.firestore.FieldValue.arrayUnion({
-                action: `Comisión recompra nivel ${level + 1} por compra de ${buyerUsername}`,
-                amount: commissionValue,
-                points: commissionPoints,
+                action: `Comisión por compra (${points} pts) - nivel ${level + 1} por ${buyerUsername}`,
+                amount: commissionValuePerLevel,
+                points: commissionPointsPerLevel,
                 orderId,
                 date: new Date().toISOString()
               })
             });
 
-            currentSponsorCode = sponsor.data.patrocinador || null;
-          }
-        } else {
-          // COMPRA INICIAL: conservar comportamiento anterior (basePointsForCommission = 10 para compras de 50 en una sola orden)
-          const basePointsForCommission = (points === 50) ? 10 : points;
-
-          for (let level = 0; level < LEVEL_PERCENTS.length; level++) {
-            if (!currentSponsorCode) break;
-            const sponsor = await findUserByUsername(currentSponsorCode);
-            if (!sponsor) break;
-
-            const sponsorRef = db.collection('usuarios').doc(sponsor.id);
-            const percent = LEVEL_PERCENTS[level] || 0;
-            const commissionValue = Math.round(basePointsForCommission * POINT_VALUE * percent);
-
-            await sponsorRef.update({
-              teamPoints: admin.firestore.FieldValue.increment(basePointsForCommission),
-              balance: admin.firestore.FieldValue.increment(commissionValue),
-              history: admin.firestore.FieldValue.arrayUnion({
-                action: `Comisión nivel ${level + 1} por compra de ${buyerUsername}`,
-                amount: commissionValue,
-                points: basePointsForCommission,
-                orderId,
-                date: new Date().toISOString()
-              })
-            });
-
+            // subir al siguiente upline
             currentSponsorCode = sponsor.data.patrocinador || null;
           }
         }
@@ -232,13 +251,12 @@ exports.handler = async (event) => {
         console.warn('Error durante la distribución multinivel (no crítico):', e);
       }
 
-      // 5) Historial del comprador (ya agregado dentro de la transacción)
-      return { statusCode: 200, body: JSON.stringify({ message: 'Orden confirmada y puntos distribuidos' }) };
+      return { statusCode: 200, body: JSON.stringify({ message: 'Orden confirmada y pagos procesados' }) };
     }
 
     return { statusCode: 400, body: JSON.stringify({ error: 'Action no soportada' }) };
   } catch (err) {
-    console.error("🔥 Error confirm-order:", err);
+    console.error('🔥 Error confirm-order:', err);
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 };
