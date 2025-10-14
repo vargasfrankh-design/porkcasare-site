@@ -158,34 +158,50 @@ exports.handler = async (event) => {
       const isFirstTime50Commission = payInitialBonus;
 
       // 3.a Pay initial bonus if required (non-critical)
-      if (payInitialBonus && sponsorCode) {
-        try {
-          const sponsor = await findUserByUsername(sponsorCode);
-          if (sponsor) {
-            const sponsorRef = db.collection('usuarios').doc(sponsor.id);
-            const bonusPoints = 20;
-            const bonusValue = bonusPoints * POINT_VALUE; // 20 * 2800 = 56,000
-            await sponsorRef.update({
-              balance: admin.firestore.FieldValue.increment(bonusValue),
-              teamPoints: admin.firestore.FieldValue.increment(bonusPoints),
-              history: admin.firestore.FieldValue.arrayUnion({
-                action: `Bono inicio rápido por compra/alcance de 50 pts de ${buyerData?.usuario || 'usuario'}`,
-                amount: bonusValue,
-                points: bonusPoints,
-                orderId,
-                date: new Date().toISOString()
-              })
-            });
+// --- PATCH START ---
+if (payInitialBonus && sponsorCode) {
+  try {
+    const sponsor = await findUserByUsername(sponsorCode);
+    if (sponsor) {
+      const sponsorRef = db.collection('usuarios').doc(sponsor.id);
 
-            // mark buyer as having received initial bonus
-            await db.collection('usuarios').doc(buyerUid).update({ initialBonusGiven: true });
-            // mark order as paid (optional)
-            await orderRef.update({ initialBonusPaid: true });
-          }
-        } catch (e) {
-          console.warn('Error procesando bono inicial (no crítico):', e);
-        }
+      // Determinar si esta orden fue de 50 puntos exactos (entrada directa)
+      // o si el usuario llegó a 50 acumulando compras pequeñas.
+      const isSingle50Order = (points === 50);
+      const crossed50 = (prevPersonalPoints < 50 && newPersonalPoints >= 50 && points !== 50);
+
+      // Si la orden fue de 50 puntos exactos → pagar 20 pts.
+      // Si el usuario llegó a 50 acumulando de 10 en 10 → pagar 10 pts.
+      const bonusPoints = isSingle50Order ? 20 : (crossed50 ? 10 : 0);
+
+      if (bonusPoints > 0) {
+        const bonusValue = bonusPoints * POINT_VALUE;
+
+        await sponsorRef.update({
+          balance: admin.firestore.FieldValue.increment(bonusValue),
+          teamPoints: admin.firestore.FieldValue.increment(bonusPoints),
+          history: admin.firestore.FieldValue.arrayUnion({
+            action: `Bono inicio rápido (${bonusPoints} pts) por compra/alcance de 50 pts de ${buyerData?.usuario || 'usuario'}`,
+            amount: bonusValue,
+            points: bonusPoints,
+            orderId,
+            date: new Date().toISOString()
+          })
+        });
+
+        // marcar que ya recibió bono
+        await db.collection('usuarios').doc(buyerUid).update({ initialBonusGiven: true });
+
+        // marcar la orden como bono pagado
+        await orderRef.update({ initialBonusPaid: true });
       }
+    }
+  } catch (e) {
+    console.warn('Error procesando bono inicial (no crítico):', e);
+  }
+}
+// --- PATCH END ---
+
 
       // 4) Multilevel commission distribution
       try {
