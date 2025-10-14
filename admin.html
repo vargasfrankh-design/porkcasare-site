@@ -9,7 +9,7 @@
     body { font-family: Arial, sans-serif; padding: 20px; background: #fafafa; }
     h1 { margin-bottom: 20px; }
     .hidden { display: none; }
-    .tabs { display: flex; gap: 10px; margin-bottom: 10px; }
+    .tabs { display: flex; gap: 10px; margin-bottom: 10px; align-items:center; }
     .tab { padding: 8px 16px; background: #eee; border: none; cursor: pointer; border-radius: 5px; }
     .tab.active { background: #007bff; color: white; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -45,15 +45,14 @@
       <thead>
         <tr>
           <th>ID</th>
+          <th>Producto</th>
           <th>Usuario</th>
-          <th>Productos</th>
-          <th>Puntos</th>
           <th>Precio</th>
           <th>Estado</th>
           <th>Acciones</th>
         </tr>
       </thead>
-      <tbody id="ordersBody"></tbody>
+      <tbody id="ordersTable"></tbody>
     </table>
 
     <div id="logBox"></div>
@@ -61,19 +60,26 @@
 
   <script type="module">
     import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
     import { auth, db } from "/src/firebase-config.js";
-    import { getDoc, doc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-    import "/js/admin-orders.js";
 
     const loginSection = document.getElementById("loginSection");
     const adminPanel = document.getElementById("adminPanel");
     const loginForm = document.getElementById("loginForm");
+    const ordersTable = document.getElementById("ordersTable");
     const logoutBtn = document.getElementById("logoutBtn");
+    const tabPending = document.getElementById("tabPending");
+    const tabConfirmed = document.getElementById("tabConfirmed");
+    const btnRefresh = document.getElementById("btnRefresh");
 
+    let allOrders = []; // cache
+
+    // Login
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
+
       try {
         await signInWithEmailAndPassword(auth, email, password);
       } catch (err) {
@@ -81,27 +87,174 @@
       }
     });
 
+    // Logout
     logoutBtn.addEventListener("click", async () => {
       await signOut(auth);
     });
 
+    // Chequear estado del usuario
     onAuthStateChanged(auth, async (user) => {
-      if (!user) {
+      if (user) {
+        const userDoc = await getDoc(doc(db, "usuarios", user.uid));
+        if (!userDoc.exists() || userDoc.data().role !== "admin") {
+          alert("Acceso denegado. No eres administrador.");
+          await signOut(auth);
+          return;
+        }
+
+        loginSection.classList.add("hidden");
+        adminPanel.classList.remove("hidden");
+        await fetchAndRenderOrders();
+      } else {
         loginSection.classList.remove("hidden");
         adminPanel.classList.add("hidden");
-        return;
       }
-
-      const userDoc = await getDoc(doc(db, "usuarios", user.uid));
-      if (!userDoc.exists() || userDoc.data().role !== "admin") {
-        alert("Acceso denegado. No eres administrador.");
-        await signOut(auth);
-        return;
-      }
-
-      loginSection.classList.add("hidden");
-      adminPanel.classList.remove("hidden");
     });
+
+    async function fetchAndRenderOrders() {
+      ordersTable.innerHTML = '<tr><td colspan="6" class="text-center small-muted">Cargando...</td></tr>';
+      const user = auth.currentUser;
+      if (!user) return;
+      const token = await user.getIdToken();
+      try {
+        const res = await fetch("/.netlify/functions/list-orders", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) {
+          ordersTable.innerHTML = `<tr><td colspan="6" class="text-center small-muted">Error cargando órdenes (${res.status})</td></tr>`;
+          return;
+        }
+        const data = await res.json();
+        allOrders = data.orders || [];
+        renderCurrentTab();
+      } catch (err) {
+        ordersTable.innerHTML = `<tr><td colspan="6" class="text-center small-muted">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    function renderCurrentTab() {
+      const showingPending = tabPending.classList.contains('active');
+      const filtered = allOrders.filter(o => {
+        const status = o.status || '';
+        return showingPending ? (["pending_mp","pending_cash","pendiente_confirmacion"].includes(status)) : (status === 'confirmado');
+      });
+      renderTableRows(filtered, showingPending);
+    }
+
+    function renderTableRows(orders, pending=true) {
+      if (!orders.length) {
+        ordersTable.innerHTML = `<tr><td colspan="6" class="text-center small-muted">No hay órdenes ${pending ? 'pendientes' : 'confirmadas'}.</td></tr>`;
+        return;
+      }
+      ordersTable.innerHTML = '';
+      orders.forEach(order => {
+        const productos = (order.productName) ? order.productName : (order.items ? (order.items.map(i=> i.title || i.productName).join(", ")) : "");
+        const precio = order.price || order.priceTotal || 0;
+        const userText = order.buyerUsername || order.buyerUid || '';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${order.id}</td>
+          <td>${productos}</td>
+          <td>${userText}</td>
+          <td>$${precio}</td>
+          <td>${order.status}</td>
+          <td>
+            ${pending ? `<button data-id="${order.id}" class="btn-confirm">Confirmar</button>
+                        <button data-id="${order.id}" class="btn-reject">Rechazar</button>`
+                     : `<button data-id="${order.id}" class="btn-view">Ver</button>
+                        <button data-id="${order.id}" class="btn-delete">Eliminar</button>`
+            }
+          </td>
+        `;
+        ordersTable.appendChild(tr);
+      });
+
+      // attach handlers
+      document.querySelectorAll('.btn-confirm').forEach(b => b.addEventListener('click', confirmOrderHandler));
+      document.querySelectorAll('.btn-reject').forEach(b => b.addEventListener('click', rejectOrderHandler));
+      document.querySelectorAll('.btn-delete').forEach(b => b.addEventListener('click', deleteOrderHandler));
+      document.querySelectorAll('.btn-view').forEach(b => b.addEventListener('click', viewOrderHandler));
+    }
+
+    async function confirmOrderHandler(e) {
+      const id = e.currentTarget.dataset.id;
+      if (!confirm(`Confirmar orden ${id}?`)) return;
+      try {
+        const user = auth.currentUser;
+        const token = await user.getIdToken();
+        const res = await fetch("/.netlify/functions/confirm-order", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: id, action: 'confirm' })
+        });
+        if (!res.ok) throw new Error('Status ' + res.status);
+        alert('Orden confirmada ✅');
+        await fetchAndRenderOrders();
+      } catch (err) {
+        alert('Error confirmando: ' + err.message);
+      }
+    }
+
+    async function rejectOrderHandler(e) {
+      const id = e.currentTarget.dataset.id;
+      if (!confirm(`Rechazar orden ${id}?`)) return;
+      try {
+        const user = auth.currentUser;
+        const token = await user.getIdToken();
+        const res = await fetch("/.netlify/functions/confirm-order", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: id, action: 'reject' })
+        });
+        if (!res.ok) throw new Error('Status ' + res.status);
+        alert('Orden rechazada ❌');
+        await fetchAndRenderOrders();
+      } catch (err) {
+        alert('Error rechazando: ' + err.message);
+      }
+    }
+
+    async function deleteOrderHandler(e) {
+      const id = e.currentTarget.dataset.id;
+      if (!confirm(`Eliminar orden ${id}? Esta acción no se puede deshacer.`)) return;
+      try {
+        const user = auth.currentUser;
+        const token = await user.getIdToken();
+        const res = await fetch("/.netlify/functions/confirm-order", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: id, action: 'delete' })
+        });
+        if (!res.ok) throw new Error('Status ' + res.status);
+        alert('Orden eliminada');
+        await fetchAndRenderOrders();
+      } catch (err) {
+        alert('Error eliminando: ' + err.message + ". Si tu backend no soporta 'delete', implementa la ruta o elimina desde Firestore.");
+      }
+    }
+
+    function viewOrderHandler(e) {
+      const id = e.currentTarget.dataset.id;
+      const order = allOrders.find(o => o.id === id);
+      Swal.fire({
+        title: `Orden ${id}`,
+        html: `<pre style="text-align:left;background:#f7f9fc;padding:8px;border-radius:6px;max-height:300px;overflow:auto">${JSON.stringify(order, null, 2)}</pre>`,
+        width: 800
+      });
+    }
+
+    // tabs
+    tabPending.addEventListener('click', () => {
+      tabPending.classList.add('active');
+      tabConfirmed.classList.remove('active');
+      renderCurrentTab();
+    });
+    tabConfirmed.addEventListener('click', () => {
+      tabConfirmed.classList.add('active');
+      tabPending.classList.remove('active');
+      renderCurrentTab();
+    });
+    btnRefresh.addEventListener('click', fetchAndRenderOrders);
   </script>
 </body>
 </html>
