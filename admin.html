@@ -3,25 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <title>Panel de Administración - PorkCasare</title>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link rel="stylesheet" href="/oficina-virtual/css/style.css">
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; background: #fafafa; }
     h1 { margin-bottom: 20px; }
     .hidden { display: none; }
-    .tabs { display: flex; gap: 10px; margin-bottom: 10px; align-items:center; }
-    .tab { padding: 8px 16px; background: #eee; border: none; cursor: pointer; border-radius: 5px; }
-    .tab.active { background: #007bff; color: white; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 10px; border: 1px solid #ccc; text-align: left; }
     th { background: #eee; }
     button { padding: 5px 10px; margin: 2px; cursor: pointer; }
-    #logBox { margin-top: 20px; font-size: 12px; color: #555; }
   </style>
 </head>
 <body>
   <h1>Panel de Administración</h1>
 
+  <!-- Formulario de login -->
   <div id="loginSection">
     <h2>Iniciar sesión</h2>
     <form id="loginForm">
@@ -33,14 +29,9 @@
     </form>
   </div>
 
+  <!-- Panel solo visible si es admin -->
   <div id="adminPanel" class="hidden">
-    <div class="tabs">
-      <button id="tabPending" class="tab active">Pendientes</button>
-      <button id="tabConfirmed" class="tab">Confirmadas</button>
-      <button id="btnRefresh">🔄 Actualizar</button>
-      <button id="logoutBtn" style="margin-left:auto;">Cerrar sesión</button>
-    </div>
-
+    <h2>Órdenes pendientes</h2>
     <table>
       <thead>
         <tr>
@@ -54,8 +45,7 @@
       </thead>
       <tbody id="ordersTable"></tbody>
     </table>
-
-    <div id="logBox"></div>
+    <button id="logoutBtn">Cerrar sesión</button>
   </div>
 
   <script type="module">
@@ -68,11 +58,6 @@
     const loginForm = document.getElementById("loginForm");
     const ordersTable = document.getElementById("ordersTable");
     const logoutBtn = document.getElementById("logoutBtn");
-    const tabPending = document.getElementById("tabPending");
-    const tabConfirmed = document.getElementById("tabConfirmed");
-    const btnRefresh = document.getElementById("btnRefresh");
-
-    let allOrders = []; // cache
 
     // Login
     loginForm.addEventListener("submit", async (e) => {
@@ -104,157 +89,84 @@
 
         loginSection.classList.add("hidden");
         adminPanel.classList.remove("hidden");
-        await fetchAndRenderOrders();
+        loadOrders(user);
       } else {
         loginSection.classList.remove("hidden");
         adminPanel.classList.add("hidden");
       }
     });
 
-    async function fetchAndRenderOrders() {
-      ordersTable.innerHTML = '<tr><td colspan="6" class="text-center small-muted">Cargando...</td></tr>';
-      const user = auth.currentUser;
-      if (!user) return;
+    // Cargar órdenes
+    async function loadOrders(user) {
       const token = await user.getIdToken();
-      try {
-        const res = await fetch("/.netlify/functions/list-orders", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (!res.ok) {
-          ordersTable.innerHTML = `<tr><td colspan="6" class="text-center small-muted">Error cargando órdenes (${res.status})</td></tr>`;
-          return;
-        }
-        const data = await res.json();
-        allOrders = data.orders || [];
-        renderCurrentTab();
-      } catch (err) {
-        ordersTable.innerHTML = `<tr><td colspan="6" class="text-center small-muted">Error: ${err.message}</td></tr>`;
-      }
-    }
-
-    function renderCurrentTab() {
-      const showingPending = tabPending.classList.contains('active');
-      const filtered = allOrders.filter(o => {
-        const status = o.status || '';
-        return showingPending ? (["pending_mp","pending_cash","pendiente_confirmacion"].includes(status)) : (status === 'confirmado');
+      const res = await fetch("/.netlify/functions/list-orders", {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      renderTableRows(filtered, showingPending);
-    }
 
-    function renderTableRows(orders, pending=true) {
-      if (!orders.length) {
-        ordersTable.innerHTML = `<tr><td colspan="6" class="text-center small-muted">No hay órdenes ${pending ? 'pendientes' : 'confirmadas'}.</td></tr>`;
+      if (!res.ok) {
+        alert("Error cargando órdenes: " + res.status);
         return;
       }
-      ordersTable.innerHTML = '';
+
+      const data = await res.json();
+      const orders = data.orders || [];
+
+      ordersTable.innerHTML = "";
       orders.forEach(order => {
-        const productos = (order.productName) ? order.productName : (order.items ? (order.items.map(i=> i.title || i.productName).join(", ")) : "");
-        const precio = order.price || order.priceTotal || 0;
-        const userText = order.buyerUsername || order.buyerUid || '';
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
+        const row = document.createElement("tr");
+        row.innerHTML = `
           <td>${order.id}</td>
-          <td>${productos}</td>
-          <td>${userText}</td>
-          <td>$${precio}</td>
+          <td>${order.productName}</td>
+          <td>${order.buyerUsername || order.buyerUid}</td>
+          <td>$${order.price}</td>
           <td>${order.status}</td>
           <td>
-            ${pending ? `<button data-id="${order.id}" class="btn-confirm">Confirmar</button>
-                        <button data-id="${order.id}" class="btn-reject">Rechazar</button>`
-                     : `<button data-id="${order.id}" class="btn-view">Ver</button>
-                        <button data-id="${order.id}" class="btn-delete">Eliminar</button>`
-            }
+            <button onclick="confirmOrder('${order.id}')">Confirmar</button>
+            <button onclick="rejectOrder('${order.id}')">Rechazar</button>
           </td>
         `;
-        ordersTable.appendChild(tr);
-      });
-
-      // attach handlers
-      document.querySelectorAll('.btn-confirm').forEach(b => b.addEventListener('click', confirmOrderHandler));
-      document.querySelectorAll('.btn-reject').forEach(b => b.addEventListener('click', rejectOrderHandler));
-      document.querySelectorAll('.btn-delete').forEach(b => b.addEventListener('click', deleteOrderHandler));
-      document.querySelectorAll('.btn-view').forEach(b => b.addEventListener('click', viewOrderHandler));
-    }
-
-    async function confirmOrderHandler(e) {
-      const id = e.currentTarget.dataset.id;
-      if (!confirm(`Confirmar orden ${id}?`)) return;
-      try {
-        const user = auth.currentUser;
-        const token = await user.getIdToken();
-        const res = await fetch("/.netlify/functions/confirm-order", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ orderId: id, action: 'confirm' })
-        });
-        if (!res.ok) throw new Error('Status ' + res.status);
-        alert('Orden confirmada ✅');
-        await fetchAndRenderOrders();
-      } catch (err) {
-        alert('Error confirmando: ' + err.message);
-      }
-    }
-
-    async function rejectOrderHandler(e) {
-      const id = e.currentTarget.dataset.id;
-      if (!confirm(`Rechazar orden ${id}?`)) return;
-      try {
-        const user = auth.currentUser;
-        const token = await user.getIdToken();
-        const res = await fetch("/.netlify/functions/confirm-order", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ orderId: id, action: 'reject' })
-        });
-        if (!res.ok) throw new Error('Status ' + res.status);
-        alert('Orden rechazada ❌');
-        await fetchAndRenderOrders();
-      } catch (err) {
-        alert('Error rechazando: ' + err.message);
-      }
-    }
-
-    async function deleteOrderHandler(e) {
-      const id = e.currentTarget.dataset.id;
-      if (!confirm(`Eliminar orden ${id}? Esta acción no se puede deshacer.`)) return;
-      try {
-        const user = auth.currentUser;
-        const token = await user.getIdToken();
-        const res = await fetch("/.netlify/functions/confirm-order", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ orderId: id, action: 'delete' })
-        });
-        if (!res.ok) throw new Error('Status ' + res.status);
-        alert('Orden eliminada');
-        await fetchAndRenderOrders();
-      } catch (err) {
-        alert('Error eliminando: ' + err.message + ". Si tu backend no soporta 'delete', implementa la ruta o elimina desde Firestore.");
-      }
-    }
-
-    function viewOrderHandler(e) {
-      const id = e.currentTarget.dataset.id;
-      const order = allOrders.find(o => o.id === id);
-      Swal.fire({
-        title: `Orden ${id}`,
-        html: `<pre style="text-align:left;background:#f7f9fc;padding:8px;border-radius:6px;max-height:300px;overflow:auto">${JSON.stringify(order, null, 2)}</pre>`,
-        width: 800
+        ordersTable.appendChild(row);
       });
     }
 
-    // tabs
-    tabPending.addEventListener('click', () => {
-      tabPending.classList.add('active');
-      tabConfirmed.classList.remove('active');
-      renderCurrentTab();
-    });
-    tabConfirmed.addEventListener('click', () => {
-      tabConfirmed.classList.add('active');
-      tabPending.classList.remove('active');
-      renderCurrentTab();
-    });
-    btnRefresh.addEventListener('click', fetchAndRenderOrders);
+    // Confirmar / Rechazar
+    window.confirmOrder = async function(orderId) {
+      const user = auth.currentUser;
+      const token = await user.getIdToken();
+      const res = await fetch("/.netlify/functions/confirm-order", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ orderId, action: 'confirm' })
+      });
+      if (!res.ok) {
+        alert("Error confirmando: " + res.status);
+        return;
+      }
+      alert("Orden confirmada ✅");
+      loadOrders(user);
+    };
+
+    window.rejectOrder = async function(orderId) {
+      const user = auth.currentUser;
+      const token = await user.getIdToken();
+      const res = await fetch("/.netlify/functions/confirm-order", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ orderId, action: 'reject' })
+      });
+      if (!res.ok) {
+        alert("Error rechazando: " + res.status);
+        return;
+      }
+      alert("Orden rechazada ❌");
+      loadOrders(user);
+    };
   </script>
 </body>
 </html>
