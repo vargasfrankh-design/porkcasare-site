@@ -1,6 +1,6 @@
 // main.js
 import { auth, db } from "./src/firebase-config.js";
-import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import { setDoc, doc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 // ---------- Función: Verificar existencia del patrocinador ----------
@@ -151,43 +151,79 @@ if (form) {
     }
 
     // Si todo está correcto, registrar
-    try {
+    
+try {
+      // prevenir doble envío
+      const submitBtn = form.querySelector('[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
+
+      // Antes de crear, comprobar si el correo ya está registrado para mejorar UX
+      try {
+        const methods = await fetchSignInMethodsForEmail(auth, email);
+        if (methods && methods.length > 0) {
+          if (submitBtn) submitBtn.disabled = false;
+          Swal.fire({
+            icon: 'info',
+            title: 'Correo ya registrado',
+            text: 'Este correo ya está asociado a una cuenta. Intenta recuperar la contraseña o inicia sesión.'
+          });
+          return;
+        }
+      } catch (checkErr) {
+        // Si falla la comprobación, continuar; no queremos bloquear por un fallo no crítico
+        console.warn("No se pudo verificar métodos de inicio de sesión:", checkErr);
+      }
+
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const uid = userCredential.user.uid;
+      const user = userCredential.user;
+      const uid = user.uid;
 
-      await setDoc(doc(db, "usuarios", uid), {
-        tipoRegistro,
-        pais,
-        provincia,
-        ciudad,
-        usuario,
-        nombre,
-        apellido,
-        sexo,
-        fechaNacimiento,
-        tipoDocumento,
-        numeroDocumento,
-        patrocinador,
-        email,
-        celular,
-        direccion,
-        codigoPostal,
-        creadoEn: new Date()
-      });
+      // Forzar obtención de token para que la siguiente escritura a Firestore tenga credenciales válidas
+      try {
+        await user.getIdToken(true);
+      } catch (tokenErr) {
+        console.warn("No se pudo refrescar el token inmediatamente:", tokenErr);
+      }
 
-      // Confirmación y redirección
-      Swal.fire({
-        icon: 'success',
-        title: 'Registro exitoso',
-        text: 'Tu cuenta ha sido creada correctamente.',
-        confirmButtonText: 'Iniciar sesión'
-      }).then(() => {
-        // ruta relativa: register.html está en raíz y distribuidor-login.html también
-        window.location.href = "distribuidor-login.html";
-      });
+      // Intentar crear el documento de perfil; si falla, eliminar el usuario creado para evitar cuentas huérfanas
+      try {
+        await setDoc(doc(db, "usuarios", uid), {
+          uid,
+          tipoRegistro,
+          pais,
+          provincia,
+          ciudad,
+          usuario,
+          nombre,
+          apellido,
+          sexo,
+          fechaNacimiento,
+          tipoDocumento,
+          numeroDocumento,
+          patrocinador,
+          email,
+          celular,
+          direccion,
+          codigoPostal,
+          createdAt: new Date().toISOString()
+        });
 
+        Swal.fire({
+          icon: 'success',
+          title: 'Registro exitoso',
+          text: 'Tu cuenta fue creada correctamente.'
+        });
+      } catch (fireErr) {
+        console.error("Error al escribir perfil en Firestore, eliminando usuario creado:", fireErr);
+        try {
+          await user.delete();
+        } catch (delErr) {
+          console.error("No se pudo eliminar el usuario huérfano:", delErr);
+        }
+        throw fireErr;
+      }
     } catch (error) {
-      console.error("Error en el registro:", error);
+console.error("Error en el registro:", error);
       let msg = "Error al registrar usuario.";
 
       if (error.code === "auth/email-already-in-use") {
@@ -198,11 +234,16 @@ if (form) {
         msg = "La contraseña es demasiado débil.";
       }
 
-      Swal.fire({
+      
+      if (typeof submitBtn !== 'undefined' && submitBtn) submitBtn.disabled = false;
+
+Swal.fire({
         icon: 'error',
         title: 'Error al registrar',
         text: msg
       });
     }
+  });
+}
   });
 }
