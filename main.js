@@ -172,7 +172,17 @@ if (form) {
         celular,
         direccion,
         codigoPostal,
+<<<<<<< HEAD
+        role: tipoRegistro === 'administrador' ? 'admin' : tipoRegistro,
+        creadoEn: new Date(),
+        puntos: 0,
+        personalPoints: 0,
+        teamPoints: 0,
+        balance: 0,
+        walletBalance: 0
+=======
         creadoEn: new Date()
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
       });
 
       // Confirmación y redirección
