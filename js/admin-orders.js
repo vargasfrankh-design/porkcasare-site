@@ -220,14 +220,23 @@ async function onConfirmClick(e) {
   }
 }
 
+<<<<<<< HEAD
+// check admin: si quieres restringir, añade campo isAdmin o rol en tu documento de usuario
+=======
 // check admin: si quieres restringir, añade campo isAdmin o role en tu documento de usuario
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
 async function checkIsAdmin(user) {
   if (!user) return false;
   try {
     const me = await findUserByUid(user.uid);
     if (!me) return false;
+<<<<<<< HEAD
+    // si tienes un campo rol/isAdmin en el perfil:
+    if (me.data.rol === "admin" || me.data.isAdmin === true) return true;
+=======
     // si tienes un campo role/isAdmin en el perfil:
     if (me.data.role === "admin" || me.data.isAdmin === true) return true;
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
     // si no existe campo y confías en el correo:
     const adminEmails = [/* "tu.email@ejemplo.com" */];
     if (adminEmails.includes(user.email)) return true;
