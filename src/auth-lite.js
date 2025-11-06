@@ -1,7 +1,11 @@
 import { firebaseConfig } from './firebase-config.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js';
+<<<<<<< HEAD
+import { getFirestore, doc, setDoc, getDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
+=======
 import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -41,6 +45,20 @@ if(loginForm){
       const snap = await getDoc(doc(db,'usuarios',uid));
       if(!snap.exists()){ alert('Perfil no encontrado'); return; }
       const data = snap.data();
+<<<<<<< HEAD
+      
+      // Verificar y asignar rol si no existe
+      if (!data.rol) {
+        console.log("Usuario sin rol detectado, asignando 'distribuidor' por defecto");
+        await updateDoc(doc(db, "usuarios", uid), {
+          rol: 'distribuidor'
+        });
+        console.log("Rol 'distribuidor' asignado correctamente");
+        data.rol = 'distribuidor'; // Actualizar el objeto local
+      }
+      
+=======
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
       if(data.rol === 'admin') window.location='admin.html'; else window.location='distribuidor.html';
     }catch(err){ console.error(err); alert('Error login: ' + (err.code||err.message)); }
   });
