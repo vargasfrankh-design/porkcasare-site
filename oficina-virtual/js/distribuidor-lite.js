@@ -42,13 +42,31 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const userData = docSnap.data();
       // Exponer tipo de registro globalmente para otros scripts
+<<<<<<< HEAD
+      const userRole = userData.role || userData.tipoRegistro || userData.rol || 'distribuidor';
+      window.currentTipoRegistro = userRole.toString().toLowerCase();
+      window.currentUserRole = userRole.toString().toLowerCase();
+=======
 window.currentTipoRegistro = (userData.tipoRegistro || userData.rol || 'distribuidor').toString().toLowerCase();
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
 
       
 
       // Disparar personalPointsReady para garantizar que otros scripts (productos, alerta) reaccionen
       const _personalPoints = Number(userData.personalPoints ?? userData.puntos ?? userData.groupPoints ?? 0);
       document.dispatchEvent(new CustomEvent('personalPointsReady', { detail: { personalPoints: _personalPoints } }));
+<<<<<<< HEAD
+      
+      // Disparar pointsReady para la barra de progreso con puntos grupales
+      const _groupPoints = Number(userData.groupPoints ?? userData.teamPoints ?? 0);
+      document.dispatchEvent(new CustomEvent('pointsReady', { 
+        detail: { 
+          personalPoints: _personalPoints,
+          groupPoints: _groupPoints 
+        } 
+      }));
+=======
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
 // Mostrar datos básicos
       const nombreEl = document.getElementById("nombre");
       const usuarioEl = document.getElementById("usuario");
@@ -189,11 +207,56 @@ if (historyWrap) {
   } else {
     // formateadores (miles y fecha)
     const fmtNumber = new Intl.NumberFormat('es-CO');
+<<<<<<< HEAD
+    
+    // Helper para detectar y resaltar nombres en el texto
+    function highlightUserName(text) {
+      if (!text || typeof text !== 'string') return text || '';
+      
+      // Patrones comunes para extraer nombres de usuario
+      const patterns = [
+        /por compra de ([A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑ]+(?:\s[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑ]+)*)/i,
+        /Por ([A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑ]+(?:\s[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑ]+)*)/,
+        /de ([A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑ]+(?:\s[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑ]+)*)/i,
+        /Comisión por compra \(nivel \d+\) de ([A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑ]+(?:\s[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑ]+)*)/i
+      ];
+      
+      for (const pat of patterns) {
+        const m = text.match(pat);
+        if (m && m[1]) {
+          return text.replace(m[1], `<span class="bold-name">${m[1]}</span>`);
+        }
+      }
+      
+      // Fallback: resaltar primera secuencia de palabras capitalizadas
+      const cap = text.match(/([A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑ]+(?:\s[A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑ]+)*)/);
+      if (cap && cap[1]) {
+        return text.replace(cap[1], `<span class="bold-name">${cap[1]}</span>`);
+      }
+      return text;
+    }
+    
+    // Función para determinar si es un ingreso (comisión, bono, etc.)
+    function isIncome(historyItem) {
+      const actionTxt = (historyItem?.action || historyItem?.tipo || '').toLowerCase();
+      const incomeKeywords = ['comisión', 'comision', 'bono', 'ingreso', 'cobro', 'ganancia', 'compra'];
+      return incomeKeywords.some(keyword => actionTxt.includes(keyword));
+    }
+    
+    history.forEach(h => {
+      const li = document.createElement("div");
+      const isIncomeEntry = isIncome(h);
+      li.className = isIncomeEntry ? "hist-item income" : "hist-item";
+
+      const actionTxt  = h?.action || h?.tipo || "";
+      const highlightedAction = highlightUserName(actionTxt);
+=======
     history.forEach(h => {
       const li = document.createElement("div");
       li.className = "hist-item";
 
       const actionTxt  = h?.action || h?.tipo || "";
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
       const pointsVal  = (h?.points ?? h?.puntos ?? null);
       const pointsTxt  = (pointsVal !== null && pointsVal !== undefined) ? (`${pointsVal} pts`) : "";
       const amountVal  = (h?.amount ?? h?.monto ?? null);
@@ -205,7 +268,11 @@ if (historyWrap) {
       li.innerHTML = `
         <div class="hist-row">
           <div class="hist-left">
+<<<<<<< HEAD
+            <div class="hist-action">${highlightedAction}</div>
+=======
             <div class="hist-action">${escapeHtml(actionTxt)}</div>
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
             <div class="hist-info">${escapeHtml(pointsTxt)} ${escapeHtml(amountTxt)}</div>
           </div>
           <div class="hist-right">
@@ -226,6 +293,18 @@ if (historyWrap) {
       // --- Mostrar puntos actuales (puntos personales) ---
       // Preferir personalPoints si existe, fallback a puntos (compatibilidad)
       const puntosEl = document.getElementById("misPuntos");
+<<<<<<< HEAD
+      const pointsEl = document.getElementById("points");
+      const personalPointsValue = Number(userData.personalPoints ?? userData.puntos ?? 0);
+      if (puntosEl) puntosEl.textContent = String(personalPointsValue);
+      if (pointsEl) pointsEl.textContent = String(personalPointsValue);
+
+      // --- Mostrar teamPoints (si está disponible) ---
+      const teamEl = document.getElementById("teamPoints");
+      const groupPointsValue = Number(userData.groupPoints ?? userData.teamPoints ?? 0);
+      if (teamEl) {
+        teamEl.textContent = String(groupPointsValue);
+=======
       const personalPointsValue = Number(userData.personalPoints ?? userData.puntos ?? 0);
       if (puntosEl) puntosEl.textContent = String(personalPointsValue);
 
@@ -233,6 +312,7 @@ if (historyWrap) {
       const teamEl = document.getElementById("teamPoints");
       if (teamEl) {
         teamEl.textContent = (typeof userData.teamPoints === "number") ? String(userData.teamPoints) : "-";
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
       }
 
       // ----------------------------------------------
@@ -249,7 +329,11 @@ if (historyWrap) {
           // heurística: si sponsorIdentifier no tiene longitud típica de UID, buscar por username
           if (typeof sponsorIdentifier === "string" && sponsorIdentifier.length < 30) {
             // intentar buscar por usuario (username)
+<<<<<<< HEAD
+            const q = query(collection(db, "usuarios"), where("usuario", "==", sponsorIdentifier), where("rol", "!=", "deleted"));
+=======
             const q = query(collection(db, "usuarios"), where("usuario", "==", sponsorIdentifier), where("role", "!=", "deleted"));
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
             const res = await getDocs(q);
             if (!res.empty) sponsorId = res.docs[0].id;
           }
@@ -307,6 +391,8 @@ document.addEventListener("personalPointsReady", (e) => {
   }
 });
 
+<<<<<<< HEAD
+=======
 // -------------------- DARK MODE --------------------
 const toggleDarkMode = document.getElementById("toggleDarkMode");
 if (toggleDarkMode) {
@@ -317,6 +403,7 @@ if (toggleDarkMode) {
   if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
 }
 
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
 /* -------------------- UTILIDADES LOCALES -------------------- */
 
 function escapeHtml(str = "") {
