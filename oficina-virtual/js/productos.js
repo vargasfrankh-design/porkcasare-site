@@ -503,12 +503,23 @@ async function onBuyClick(e) {
 
   // ---------- Aquí SÍ creamos la orden en Firestore (único punto) ----------
   try {
+<<<<<<< HEAD
+    const buyerDocSnap = await getDoc(doc(db, "usuarios", buyerUid));
+    const buyerData = buyerDocSnap.exists() ? buyerDocSnap.data() : null;
+    const buyerUsername = buyerData?.usuario || buyerData?.nombre || 'Usuario desconocido';
+    
+=======
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
     const orderObj = {
       productId: prod.id,
       productName: prod.nombre,
       price: getDisplayPrice(prod),
       points: prod.puntos,
       buyerUid,
+<<<<<<< HEAD
+      buyerUsername,
+=======
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
       buyerInfo: customerData,
       deliveryMethod: customerData.deliveryMethod === 'pickup' ? 'pickup' : 'home',
       entrega: customerData.deliveryMethod === 'pickup' ? 'oficina' : 'domicilio',
@@ -537,8 +548,11 @@ async function onBuyClick(e) {
 
     // ------ Post-procesamiento: bono rápido, distribute points, historial ------
     try {
+<<<<<<< HEAD
+=======
       const buyerDocSnap = await getDoc(doc(db, "usuarios", buyerUid));
       const buyerData = buyerDocSnap.exists() ? buyerDocSnap.data() : null;
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
       const sponsorCode = buyerData ? buyerData.patrocinador : null;
 
       // Bono rápido si aplica
