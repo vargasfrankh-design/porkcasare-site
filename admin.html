@@ -5,6 +5,44 @@
   <title>Panel de Administración - PorkCasare</title>
   <link rel="stylesheet" href="/oficina-virtual/css/style.css">
   <style>
+<<<<<<< HEAD
+    body { font-family: Arial, sans-serif; padding: 20px; background: #fafafa; margin: 0; }
+    h1 { margin-bottom: 20px; color: #333; }
+    .hidden { display: none; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
+    th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
+    th { background: #f8f9fa; font-weight: 600; color: #495057; }
+    tbody tr:hover { background: #f8f9fa; }
+    button { padding: 8px 14px; margin: 2px; cursor: pointer; border: none; border-radius: 4px; font-size: 14px; }
+    button:hover { opacity: 0.9; }
+    .btn-primary { background: #007bff; color: white; }
+    .btn-success { background: #28a745; color: white; }
+    .btn-danger { background: #dc3545; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+    
+    /* Tabs */
+    .tabs { display: flex; gap: 8px; border-bottom: 2px solid #dee2e6; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab-button { padding: 12px 20px; background: #f8f9fa; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-size: 14px; font-weight: 500; color: #495057; transition: all 0.2s; }
+    .tab-button:hover { background: #e9ecef; }
+    .tab-button.active { background: white; border-bottom-color: #007bff; color: #007bff; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    
+    /* Stats cards */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .stat-card h3 { margin: 0 0 8px 0; font-size: 14px; color: #6c757d; font-weight: 500; }
+    .stat-card .value { font-size: 32px; font-weight: 700; color: #333; }
+    .stat-card.blue .value { color: #007bff; }
+    .stat-card.green .value { color: #28a745; }
+    .stat-card.orange .value { color: #fd7e14; }
+    .stat-card.purple .value { color: #6f42c1; }
+    .stat-card.red .value { color: #dc3545; }
+    
+    /* Header */
+    .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+    .empty-state { text-align: center; padding: 40px; color: #6c757d; }
+=======
     body { font-family: Arial, sans-serif; padding: 20px; background: #fafafa; }
     h1 { margin-bottom: 20px; }
     .hidden { display: none; }
@@ -12,6 +50,7 @@
     th, td { padding: 10px; border: 1px solid #ccc; text-align: left; }
     th { background: #eee; }
     button { padding: 5px 10px; margin: 2px; cursor: pointer; }
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
   </style>
 </head>
 <body>
@@ -31,6 +70,215 @@
 
   <!-- Panel solo visible si es admin -->
   <div id="adminPanel" class="hidden">
+<<<<<<< HEAD
+    <div class="admin-header">
+      <h1>Panel de Administración</h1>
+      <button id="logoutBtn" class="btn-secondary">Cerrar sesión</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-button active" data-tab="overview">Resumen</button>
+      <button class="tab-button" data-tab="pending">Órdenes Pendientes</button>
+      <button class="tab-button" data-tab="confirmed">Órdenes Confirmadas</button>
+      <button class="tab-button" data-tab="rejected">Órdenes Rechazadas</button>
+      <button class="tab-button" data-tab="distributors">Distribuidores</button>
+      <button class="tab-button" data-tab="clients">Clientes</button>
+      <button class="tab-button" data-tab="payouts">Cobros de Distribuidores</button>
+      <button class="tab-button" data-tab="users">Usuarios</button>
+    </div>
+
+    <!-- Tab: Resumen -->
+    <div id="tab-overview" class="tab-content active">
+      <div class="stats-grid">
+        <div class="stat-card blue">
+          <h3>Total de Ventas</h3>
+          <div class="value" id="totalSales">$0</div>
+        </div>
+        <div class="stat-card green">
+          <h3>Órdenes Confirmadas</h3>
+          <div class="value" id="confirmedCount">0</div>
+        </div>
+        <div class="stat-card orange">
+          <h3>Órdenes Pendientes</h3>
+          <div class="value" id="pendingCount">0</div>
+        </div>
+        <div class="stat-card purple">
+          <h3>Distribuidores</h3>
+          <div class="value" id="distributorsCount">0</div>
+        </div>
+        <div class="stat-card blue">
+          <h3>Total Usuarios</h3>
+          <div class="value" id="usersCount">0</div>
+        </div>
+        <div class="stat-card red">
+          <h3>Órdenes Rechazadas</h3>
+          <div class="value" id="rejectedCount">0</div>
+        </div>
+      </div>
+      
+      <h2>Actividad Reciente</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Usuario</th>
+            <th>Precio</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="recentActivity"></tbody>
+      </table>
+    </div>
+
+    <!-- Tab: Órdenes Pendientes -->
+    <div id="tab-pending" class="tab-content">
+      <h2>Órdenes Pendientes</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID de Orden</th>
+            <th>Usuario</th>
+            <th>Producto</th>
+            <th>Precio</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="pendingOrdersTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Tab: Órdenes Confirmadas -->
+    <div id="tab-confirmed" class="tab-content">
+      <h2>Órdenes Confirmadas</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID Orden</th>
+            <th>ID Usuario</th>
+            <th>Usuario</th>
+            <th>Producto</th>
+            <th>Precio</th>
+            <th>Puntos</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="confirmedOrdersTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Tab: Órdenes Rechazadas -->
+    <div id="tab-rejected" class="tab-content">
+      <h2>Órdenes Rechazadas</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>ID</th>
+            <th>Producto</th>
+            <th>Usuario</th>
+            <th>Precio</th>
+            <th>Motivo</th>
+          </tr>
+        </thead>
+        <tbody id="rejectedOrdersTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Tab: Distribuidores -->
+    <div id="tab-distributors" class="tab-content">
+      <h2>Distribuidores Registrados</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Celular</th>
+            <th>Puntos</th>
+            <th>Registro</th>
+          </tr>
+        </thead>
+        <tbody id="distributorsTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Tab: Clientes -->
+    <div id="tab-clients" class="tab-content">
+      <h2>Clientes Registrados</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Celular</th>
+            <th>Puntos</th>
+            <th>Registro</th>
+          </tr>
+        </thead>
+        <tbody id="clientsTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Tab: Cobros de Distribuidores -->
+    <div id="tab-payouts" class="tab-content">
+      <h2>Cobros de Distribuidores</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Distribuidor</th>
+            <th>Monto a cobrar</th>
+            <th>Fecha solicitud</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="payoutsTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Tab: Usuarios -->
+    <div id="tab-users" class="tab-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2 style="margin:0;">Todos los Usuarios</h2>
+        <button id="bulkRoleBtn" class="btn-primary">Cambiar Role a Todos</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Tipo</th>
+            <th>Puntos</th>
+            <th>Registro</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="usersTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal para seleccionar role -->
+  <div id="roleModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:white;padding:30px;border-radius:8px;max-width:400px;width:90%;">
+      <h3 id="roleModalTitle" style="margin-top:0;">Seleccionar Role</h3>
+      <p id="roleModalDescription" style="color:#666;margin-bottom:20px;"></p>
+      <select id="roleSelect" style="width:100%;padding:10px;margin-bottom:20px;font-size:14px;border:1px solid #ddd;border-radius:4px;">
+        <option value="admin">Admin</option>
+        <option value="distribuidor">Distribuidor</option>
+        <option value="cliente">Cliente</option>
+        <option value="restaurante">Restaurante</option>
+      </select>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button id="roleModalCancel" class="btn-secondary">Cancelar</button>
+        <button id="roleModalConfirm" class="btn-primary">Confirmar</button>
+      </div>
+    </div>
+=======
     <h2>Órdenes pendientes</h2>
     <table>
       <thead>
@@ -46,19 +294,44 @@
       <tbody id="ordersTable"></tbody>
     </table>
     <button id="logoutBtn">Cerrar sesión</button>
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
   </div>
 
   <script type="module">
     import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+<<<<<<< HEAD
+    import { doc, getDoc, collection, getDocs, query, where, orderBy, limit, updateDoc, runTransaction } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+=======
     import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
     import { auth, db } from "/src/firebase-config.js";
 
     const loginSection = document.getElementById("loginSection");
     const adminPanel = document.getElementById("adminPanel");
     const loginForm = document.getElementById("loginForm");
+<<<<<<< HEAD
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    let currentUser = null;
+
+    // Tab switching
+    document.querySelectorAll('.tab-button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tabId = btn.dataset.tab;
+        
+        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        btn.classList.add('active');
+        document.getElementById(`tab-${tabId}`).classList.add('active');
+      });
+    });
+
+=======
     const ordersTable = document.getElementById("ordersTable");
     const logoutBtn = document.getElementById("logoutBtn");
 
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
     // Login
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -87,15 +360,306 @@
           return;
         }
 
+<<<<<<< HEAD
+        currentUser = user;
+        loginSection.classList.add("hidden");
+        adminPanel.classList.remove("hidden");
+        
+        await loadAllData();
+=======
         loginSection.classList.add("hidden");
         adminPanel.classList.remove("hidden");
         loadOrders(user);
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
       } else {
         loginSection.classList.remove("hidden");
         adminPanel.classList.add("hidden");
       }
     });
 
+<<<<<<< HEAD
+    // Cargar todos los datos
+    async function loadAllData() {
+      await Promise.all([
+        loadOrders(),
+        loadDistributors(),
+        loadClients(),
+        loadUsers(),
+        loadPayouts(),
+        loadStats()
+      ]);
+    }
+
+    // Cargar estadísticas
+    async function loadStats() {
+      try {
+        const ordersSnap = await getDocs(collection(db, "orders"));
+        const orders = ordersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        // Fetch missing usernames for orders in recent activity
+        const usersCache = new Map();
+        for (const order of orders.slice(0, 10)) {
+          if (order.buyerUid && !order.buyerUsername && !usersCache.has(order.buyerUid)) {
+            try {
+              const userDoc = await getDoc(doc(db, "usuarios", order.buyerUid));
+              if (userDoc.exists()) {
+                const userData = userDoc.data();
+                order.buyerUsername = userData.usuario || userData.nombre || 'Usuario desconocido';
+                usersCache.set(order.buyerUid, order.buyerUsername);
+              }
+            } catch (err) {
+              console.warn('Error fetching user for recent order:', order.id, err);
+            }
+          } else if (order.buyerUid && usersCache.has(order.buyerUid)) {
+            order.buyerUsername = usersCache.get(order.buyerUid);
+          }
+        }
+        
+        const pending = orders.filter(o => o.status === 'pending');
+        const confirmed = orders.filter(o => o.status === 'confirmed');
+        const rejected = orders.filter(o => o.status === 'rejected');
+        
+        const totalSales = confirmed.reduce((sum, o) => sum + (Number(o.price) || 0), 0);
+        
+        const usersSnap = await getDocs(collection(db, "usuarios"));
+        const users = usersSnap.docs.map(d => d.data());
+        const distributors = users.filter(u => u.role === 'distribuidor' || u.tipoRegistro === 'distribuidor' || (!u.role && !u.tipoRegistro));
+        
+        document.getElementById('totalSales').textContent = `$${totalSales.toLocaleString()}`;
+        document.getElementById('confirmedCount').textContent = confirmed.length;
+        document.getElementById('pendingCount').textContent = pending.length;
+        document.getElementById('rejectedCount').textContent = rejected.length;
+        document.getElementById('distributorsCount').textContent = distributors.length;
+        document.getElementById('usersCount').textContent = users.length;
+        
+        // Recent activity
+        const recentOrders = orders.slice(0, 10);
+        const recentTable = document.getElementById('recentActivity');
+        recentTable.innerHTML = '';
+        
+        if (recentOrders.length === 0) {
+          recentTable.innerHTML = '<tr><td colspan="4" class="empty-state">No hay actividad reciente</td></tr>';
+        } else {
+          recentOrders.forEach(order => {
+            const row = document.createElement('tr');
+            const statusColor = order.status === 'confirmed' ? '#28a745' : order.status === 'rejected' ? '#dc3545' : '#fd7e14';
+            const userId = order.buyerUid ? order.buyerUid.substring(0, 8) + '...' : 'N/A';
+            const username = order.buyerUsername || 'N/A';
+            row.innerHTML = `
+              <td>${order.productName || 'N/A'}</td>
+              <td><code style="font-size:0.85em;color:#666">${userId}</code><br><strong>${username}</strong></td>
+              <td>$${(order.price || 0).toLocaleString()}</td>
+              <td><span style="color:${statusColor};font-weight:600">${order.status}</span></td>
+            `;
+            recentTable.appendChild(row);
+          });
+        }
+      } catch (err) {
+        console.error('Error loading stats:', err);
+      }
+    }
+
+    // Cargar órdenes
+    async function loadOrders() {
+      try {
+        const ordersSnap = await getDocs(collection(db, "orders"));
+        const orders = ordersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        // Fetch missing usernames for orders that don't have buyerUsername
+        const usersCache = new Map();
+        for (const order of orders) {
+          if (order.buyerUid && !order.buyerUsername && !usersCache.has(order.buyerUid)) {
+            try {
+              const userDoc = await getDoc(doc(db, "usuarios", order.buyerUid));
+              if (userDoc.exists()) {
+                const userData = userDoc.data();
+                order.buyerUsername = userData.usuario || userData.nombre || 'Usuario desconocido';
+                usersCache.set(order.buyerUid, order.buyerUsername);
+              }
+            } catch (err) {
+              console.warn('Error fetching user for order:', order.id, err);
+            }
+          } else if (order.buyerUid && usersCache.has(order.buyerUid)) {
+            order.buyerUsername = usersCache.get(order.buyerUid);
+          }
+        }
+        
+        const pending = orders.filter(o => o.status === 'pending').sort((a, b) => a.id.localeCompare(b.id));
+        const confirmed = orders.filter(o => o.status === 'confirmed');
+        const rejected = orders.filter(o => o.status === 'rejected');
+        
+        renderOrderTable('pendingOrdersTable', pending, true);
+        renderOrderTable('confirmedOrdersTable', confirmed, false);
+        renderOrderTable('rejectedOrdersTable', rejected, false);
+      } catch (err) {
+        console.error('Error loading orders:', err);
+      }
+    }
+
+    function renderOrderTable(tableId, orders, showActions) {
+      const table = document.getElementById(tableId);
+      table.innerHTML = '';
+      
+      if (orders.length === 0) {
+        table.innerHTML = `<tr><td colspan="${showActions ? 6 : 6}" class="empty-state">No hay órdenes</td></tr>`;
+        return;
+      }
+      
+      orders.forEach(order => {
+        const row = document.createElement('tr');
+        const date = order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleDateString() : 'N/A';
+        
+        if (showActions) {
+          row.innerHTML = `
+            <td><code>${order.id.substring(0, 12)}...</code></td>
+            <td><strong>${order.buyerUsername || order.buyerUid || 'N/A'}</strong></td>
+            <td>${order.productName || 'N/A'}</td>
+            <td>$${(order.price || 0).toLocaleString()}</td>
+            <td>${order.status}</td>
+            <td>
+              <button class="btn-success" onclick="confirmOrder('${order.id}')">Confirmar</button>
+              <button class="btn-danger" onclick="rejectOrder('${order.id}')">Rechazar</button>
+            </td>
+          `;
+        } else if (tableId === 'confirmedOrdersTable') {
+          const userId = order.buyerUid ? order.buyerUid.substring(0, 8) + '...' : 'N/A';
+          const username = order.buyerUsername || 'N/A';
+          row.innerHTML = `
+            <td><code>${order.id.substring(0, 12)}...</code></td>
+            <td><code style="font-size:0.85em;color:#666">${userId}</code></td>
+            <td><strong>${username}</strong></td>
+            <td>${order.productName || 'N/A'}</td>
+            <td>$${(order.price || 0).toLocaleString()}</td>
+            <td>${order.points || 0} pts</td>
+            <td>
+              <button class="btn-danger" onclick="deleteOrder('${order.id}')">Eliminar</button>
+            </td>
+          `;
+        } else {
+          row.innerHTML = `
+            <td>${date}</td>
+            <td>${order.id.substring(0, 8)}...</td>
+            <td>${order.productName || 'N/A'}</td>
+            <td>${order.buyerUsername || order.buyerUid || 'N/A'}</td>
+            <td>$${(order.price || 0).toLocaleString()}</td>
+            <td>${order.rejectionReason || 'N/A'}</td>
+          `;
+        }
+        
+        table.appendChild(row);
+      });
+    }
+
+    // Cargar distribuidores
+    async function loadDistributors() {
+      try {
+        const usersSnap = await getDocs(collection(db, "usuarios"));
+        const distributors = usersSnap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(u => (u.role === 'distribuidor' || u.tipoRegistro === 'distribuidor' || (!u.role && !u.tipoRegistro)));
+        
+        const table = document.getElementById('distributorsTable');
+        table.innerHTML = '';
+        
+        if (distributors.length === 0) {
+          table.innerHTML = '<tr><td colspan="6" class="empty-state">No hay distribuidores</td></tr>';
+          return;
+        }
+        
+        distributors.forEach(dist => {
+          const row = document.createElement('tr');
+          const date = dist.createdAt ? new Date(dist.createdAt.seconds * 1000).toLocaleDateString() : 'N/A';
+          row.innerHTML = `
+            <td>${dist.usuario || 'N/A'}</td>
+            <td>${dist.nombre || 'N/A'}</td>
+            <td>${dist.email || 'N/A'}</td>
+            <td>${dist.celular || 'N/A'}</td>
+            <td>${dist.puntos || dist.personalPoints || 0}</td>
+            <td>${date}</td>
+          `;
+          table.appendChild(row);
+        });
+      } catch (err) {
+        console.error('Error loading distributors:', err);
+      }
+    }
+
+    // Cargar clientes
+    async function loadClients() {
+      try {
+        const usersSnap = await getDocs(collection(db, "usuarios"));
+        const clients = usersSnap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(u => u.role === 'cliente' || u.tipoRegistro === 'cliente');
+        
+        const table = document.getElementById('clientsTable');
+        table.innerHTML = '';
+        
+        if (clients.length === 0) {
+          table.innerHTML = '<tr><td colspan="6" class="empty-state">No hay clientes</td></tr>';
+          return;
+        }
+        
+        clients.forEach(client => {
+          const row = document.createElement('tr');
+          const date = client.createdAt ? new Date(client.createdAt.seconds * 1000).toLocaleDateString() : 'N/A';
+          row.innerHTML = `
+            <td>${client.usuario || 'N/A'}</td>
+            <td>${client.nombre || 'N/A'}</td>
+            <td>${client.email || 'N/A'}</td>
+            <td>${client.celular || 'N/A'}</td>
+            <td>${client.puntos || client.personalPoints || 0}</td>
+            <td>${date}</td>
+          `;
+          table.appendChild(row);
+        });
+      } catch (err) {
+        console.error('Error loading clients:', err);
+      }
+    }
+
+    // Cargar todos los usuarios
+    async function loadUsers() {
+      try {
+        const usersSnap = await getDocs(collection(db, "usuarios"));
+        const users = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        const table = document.getElementById('usersTable');
+        table.innerHTML = '';
+        
+        if (users.length === 0) {
+          table.innerHTML = '<tr><td colspan="7" class="empty-state">No hay usuarios</td></tr>';
+          return;
+        }
+        
+        users.forEach(user => {
+          const row = document.createElement('tr');
+          const date = user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString() : 'N/A';
+          const userRole = user.role || user.rol || user.tipoRegistro || 'distribuidor';
+          const tipo = userRole === 'admin' ? 'Admin' : (userRole === 'distribuidor' ? 'Distribuidor' : (userRole === 'cliente' ? 'Cliente' : (userRole === 'restaurante' ? 'Restaurante' : 'Usuario')));
+          row.innerHTML = `
+            <td>${user.usuario || 'N/A'}</td>
+            <td>${user.nombre || 'N/A'}</td>
+            <td>${user.email || 'N/A'}</td>
+            <td>${tipo}</td>
+            <td>${user.puntos || user.personalPoints || 0}</td>
+            <td>${date}</td>
+            <td>
+              <button class="btn-primary" onclick="editUserRole('${user.id}', '${userRole}', '${user.usuario || user.nombre || 'Usuario'}')">Editar Role</button>
+            </td>
+          `;
+          table.appendChild(row);
+        });
+      } catch (err) {
+        console.error('Error loading users:', err);
+      }
+    }
+
+    // Confirmar / Rechazar
+    window.confirmOrder = async function(orderId) {
+      if (!currentUser) return;
+      const token = await currentUser.getIdToken();
+=======
     // Cargar órdenes
     async function loadOrders(user) {
       const token = await user.getIdToken();
@@ -133,6 +697,7 @@
     window.confirmOrder = async function(orderId) {
       const user = auth.currentUser;
       const token = await user.getIdToken();
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
       const res = await fetch("/.netlify/functions/confirm-order", {
         method: "POST",
         headers: {
@@ -146,27 +711,254 @@
         return;
       }
       alert("Orden confirmada ✅");
+<<<<<<< HEAD
+      await loadAllData();
+    };
+
+    window.rejectOrder = async function(orderId) {
+      if (!currentUser) return;
+      const reason = prompt("Motivo del rechazo (opcional):");
+      const token = await currentUser.getIdToken();
+=======
       loadOrders(user);
     };
 
     window.rejectOrder = async function(orderId) {
       const user = auth.currentUser;
       const token = await user.getIdToken();
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
       const res = await fetch("/.netlify/functions/confirm-order", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
         },
+<<<<<<< HEAD
+        body: JSON.stringify({ orderId, action: 'reject', rejectionReason: reason })
+=======
         body: JSON.stringify({ orderId, action: 'reject' })
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
       });
       if (!res.ok) {
         alert("Error rechazando: " + res.status);
         return;
       }
       alert("Orden rechazada ❌");
+<<<<<<< HEAD
+      await loadAllData();
+    };
+
+    // Eliminar orden confirmada
+    window.deleteOrder = async function(orderId) {
+      if (!currentUser) return;
+      const confirmDelete = confirm("¿Estás seguro de que deseas eliminar esta orden? Esta acción no se puede deshacer.");
+      if (!confirmDelete) return;
+      
+      try {
+        const token = await currentUser.getIdToken();
+        // Usar updateDoc para marcar como eliminada en lugar de borrar físicamente
+        const orderRef = doc(db, "orders", orderId);
+        await updateDoc(orderRef, {
+          status: 'deleted',
+          deletedAt: new Date().toISOString(),
+          deletedBy: currentUser.uid
+        });
+        alert("Orden eliminada ✅");
+        await loadAllData();
+      } catch (err) {
+        console.error('Error deleting order:', err);
+        alert("Error eliminando la orden: " + err.message);
+      }
+    };
+
+    // Cargar cobros pendientes de distribuidores
+    async function loadPayouts() {
+      try {
+        const payoutsSnap = await getDocs(collection(db, "payouts"));
+        // Filtrar solo los payouts que NO están pagados
+        const payouts = payoutsSnap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(p => p.status !== 'paid');
+        
+        console.log('Payouts loaded:', payouts.length, payouts);
+        
+        const table = document.getElementById('payoutsTable');
+        table.innerHTML = '';
+        
+        if (payouts.length === 0) {
+          table.innerHTML = '<tr><td colspan="5" class="empty-state">No hay cobros pendientes</td></tr>';
+          return;
+        }
+        
+        // Obtener información de usuarios para mostrar nombres
+        const usersMap = new Map();
+        for (const payout of payouts) {
+          if (payout.userId && !usersMap.has(payout.userId)) {
+            try {
+              const userDoc = await getDoc(doc(db, "usuarios", payout.userId));
+              if (userDoc.exists()) {
+                usersMap.set(payout.userId, userDoc.data());
+              }
+            } catch (err) {
+              console.error('Error loading user:', err);
+            }
+          }
+        }
+        
+        payouts.forEach(payout => {
+          const row = document.createElement('tr');
+          const userData = usersMap.get(payout.userId) || {};
+          const userName = userData.nombre || userData.usuario || 'Desconocido';
+          const date = payout.createdAt ? (payout.createdAt.seconds ? new Date(payout.createdAt.seconds * 1000).toLocaleDateString() : new Date(payout.createdAt).toLocaleDateString()) : 'N/A';
+          const status = payout.status || 'scheduled';
+          const statusText = 'Pendiente';
+          const statusColor = '#fd7e14';
+          
+          row.innerHTML = `
+            <td>${userName} (${userData.usuario || payout.userId})</td>
+            <td>$${(payout.amount || 0).toLocaleString()}</td>
+            <td>${date}</td>
+            <td><span style="color:${statusColor};font-weight:600">${statusText}</span></td>
+            <td>
+              <button class="btn-success" onclick="acceptPayout('${payout.id}', '${payout.userId}', ${payout.amount})">Aceptar y Pagar</button>
+            </td>
+          `;
+          table.appendChild(row);
+        });
+      } catch (err) {
+        console.error('Error loading payouts:', err);
+      }
+    }
+
+    // Aceptar y pagar cobro (marca como pagado para evitar doble pago)
+    window.acceptPayout = async function(payoutId, userId, amount) {
+      if (!currentUser) return;
+      const confirmPay = confirm(`¿Confirmar pago de $${amount.toLocaleString()} al distribuidor?`);
+      if (!confirmPay) return;
+      
+      try {
+        // Actualizar el estado del payout a 'paid'
+        const payoutRef = doc(db, "payouts", payoutId);
+        await updateDoc(payoutRef, {
+          status: 'paid',
+          paidAt: new Date().toISOString(),
+          paidBy: currentUser.uid
+        });
+        
+        // El monto ya fue descontado de balance cuando el distribuidor solicitó el cobro
+        // Ahora que el admin aprueba el pago, actualizamos:
+        // 1. Descontamos de walletBalance (ya que se está pagando físicamente)
+        // 2. Incrementamos totalComisionesCobradas (para llevar registro del total pagado)
+        const userRef = doc(db, "usuarios", userId);
+        await runTransaction(db, async (tx) => {
+          const userSnap = await tx.get(userRef);
+          if (!userSnap.exists()) {
+            throw new Error("Usuario no encontrado");
+          }
+          const userData = userSnap.data();
+          const currentWallet = Number(userData.walletBalance ?? 0);
+          const currentCobradas = Number(userData.totalComisionesCobradas ?? 0);
+          
+          // Descontar de wallet y sumar a comisiones cobradas
+          const newWallet = currentWallet - amount;
+          const newCobradas = currentCobradas + amount;
+          
+          tx.update(userRef, {
+            walletBalance: newWallet,
+            totalComisionesCobradas: newCobradas
+          });
+        });
+        
+        alert("Pago confirmado exitosamente ✅");
+        await loadAllData();
+      } catch (err) {
+        console.error('Error processing payout:', err);
+        alert("Error procesando el pago: " + err.message);
+      }
+    };
+
+    // Role management variables
+    let roleModalTarget = null;
+    let roleModalMode = 'single';
+    
+    const roleModal = document.getElementById('roleModal');
+    const roleModalTitle = document.getElementById('roleModalTitle');
+    const roleModalDescription = document.getElementById('roleModalDescription');
+    const roleSelect = document.getElementById('roleSelect');
+    const roleModalCancel = document.getElementById('roleModalCancel');
+    const roleModalConfirm = document.getElementById('roleModalConfirm');
+    const bulkRoleBtn = document.getElementById('bulkRoleBtn');
+
+    // Edit individual user role
+    window.editUserRole = async function(userId, currentRole, userName) {
+      roleModalTarget = userId;
+      roleModalMode = 'single';
+      roleModalTitle.textContent = 'Editar Role de Usuario';
+      roleModalDescription.textContent = `Cambiando role para: ${userName}`;
+      roleSelect.value = currentRole || 'distribuidor';
+      roleModal.style.display = 'flex';
+    };
+
+    // Bulk role change
+    bulkRoleBtn.addEventListener('click', () => {
+      roleModalTarget = null;
+      roleModalMode = 'bulk';
+      roleModalTitle.textContent = 'Cambiar Role a Todos los Usuarios';
+      roleModalDescription.textContent = 'Esta acción cambiará el role de TODOS los usuarios en el sistema.';
+      roleSelect.value = 'distribuidor';
+      roleModal.style.display = 'flex';
+    });
+
+    // Cancel modal
+    roleModalCancel.addEventListener('click', () => {
+      roleModal.style.display = 'none';
+      roleModalTarget = null;
+    });
+
+    // Close modal on background click
+    roleModal.addEventListener('click', (e) => {
+      if (e.target === roleModal) {
+        roleModal.style.display = 'none';
+        roleModalTarget = null;
+      }
+    });
+
+    // Confirm role change
+    roleModalConfirm.addEventListener('click', async () => {
+      const selectedRole = roleSelect.value;
+      
+      try {
+        if (roleModalMode === 'single' && roleModalTarget) {
+          const userRef = doc(db, "usuarios", roleModalTarget);
+          await updateDoc(userRef, {
+            role: selectedRole
+          });
+          alert('Role actualizado exitosamente ✅');
+        } else if (roleModalMode === 'bulk') {
+          const usersSnap = await getDocs(collection(db, "usuarios"));
+          const updatePromises = usersSnap.docs.map(userDoc => {
+            const userRef = doc(db, "usuarios", userDoc.id);
+            return updateDoc(userRef, {
+              role: selectedRole
+            });
+          });
+          
+          await Promise.all(updatePromises);
+          alert(`Role actualizado para ${usersSnap.docs.length} usuarios ✅`);
+        }
+        
+        roleModal.style.display = 'none';
+        roleModalTarget = null;
+        await loadAllData();
+      } catch (err) {
+        console.error('Error updating role:', err);
+        alert('Error actualizando role: ' + err.message);
+      }
+    });
+=======
       loadOrders(user);
     };
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
   </script>
 </body>
 </html>
