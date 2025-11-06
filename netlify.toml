@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 functionsDirectory = "/opt/build/repo/netlify/functions"
 functionsDirectoryOrigin = "config"
 plugins = []
@@ -27,11 +26,3 @@ functions = "/opt/build/repo/netlify/functions"
 [functions]
 
   [functions."*"]
-=======
-[build]
-  publish = "."
-  command = ""
-
-[functions]
-  directory = "netlify/functions"
->>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
