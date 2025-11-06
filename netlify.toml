@@ -1,6 +1,37 @@
+<<<<<<< HEAD
+functionsDirectory = "/opt/build/repo/netlify/functions"
+functionsDirectoryOrigin = "config"
+plugins = []
+headers = []
+redirects = []
+
+[build]
+publish = "/opt/build/repo"
+publishOrigin = "config"
+functions = "/opt/build/repo/netlify/functions"
+
+  [build.environment]
+
+  [build.processing]
+
+    [build.processing.css]
+
+    [build.processing.html]
+
+    [build.processing.images]
+
+    [build.processing.js]
+
+  [build.services]
+
+[functions]
+
+  [functions."*"]
+=======
 [build]
   publish = "."
   command = ""
 
 [functions]
   directory = "netlify/functions"
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
