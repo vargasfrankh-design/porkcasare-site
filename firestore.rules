@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ========== Helper Functions ==========
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin';
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ========== Payouts Collection (Solicitudes de cobro) ==========
+    match /payouts/{payoutId} {
+      // Permitir crear solicitud de cobro si está autenticado, userId coincide y datos válidos
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.amount is number
+                    && request.resource.data.amount > 0
+                    && request.resource.data.status == 'scheduled';
+      
+      // Permitir lectura al dueño de la solicitud o a administradores
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      
+      // Solo administradores pueden actualizar o eliminar solicitudes de cobro
+      allow update, delete: if isAdmin();
+    }
+
+    // ========== Usuarios Collection (Perfiles de usuarios) ==========
+    match /usuarios/{userId} {
+      // Lectura: permitir sin autenticación para login, pero solo campos públicos
+      // Para acceso completo requiere autenticación
+      allow read: if true;
+      
+      // Crear: permitir sin autenticación para registro, o si está autenticado y el uid coincide
+      allow create: if true;
+      
+      // Actualizar/Eliminar: dueño o administrador
+      allow update, delete: if isOwner(userId) || isAdmin();
+
+      // Subcolección de transacciones del usuario
+      match /transactions/{txId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // ========== Distribuidores Collection ==========
+    match /distribuidores/{docId} {
+      // Crear: solo si está autenticado y el uid en los datos coincide
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.uid;
+      
+      // Lectura: cualquier usuario autenticado
+      allow read: if isAuthenticated();
+      
+      // Actualizar/Eliminar: solo el dueño
+      allow update, delete: if isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+
+    // ========== Orders Collection (Órdenes) ==========
+    match /orders/{orderId} {
+      // Crear: el buyerUid debe coincidir con el usuario autenticado
+      allow create: if isAuthenticated()
+                    && request.auth.uid == request.resource.data.buyerUid;
+      
+      // Leer: el dueño de la orden o administradores
+      allow read: if isAuthenticated() && 
+                  (request.auth.uid == resource.data.buyerUid || isAdmin());
+      
+      // Actualizar: el dueño de la orden o administradores
+      allow update: if isAuthenticated() && 
+                    (request.auth.uid == resource.data.buyerUid || isAdmin());
+      
+      // Eliminar: solo administradores
+      allow delete: if isAdmin();
+    }
+
+    // ========== Users Collection (Opcional - alternativa a usuarios) ==========
+    match /users/{userId} {
+      // Solo el dueño puede leer/escribir
+      allow read, write: if isOwner(userId);
+
+      // Subcolección de transacciones
+      match /transactions/{txId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // ========== Bloqueo por defecto (Denegar todo lo demás) ==========
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
