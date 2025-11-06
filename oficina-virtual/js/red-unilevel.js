@@ -13,6 +13,10 @@ import {
   updateDoc,
   runTransaction
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+<<<<<<< HEAD
+import TREE_CONFIG from './tree-config.js';
+=======
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
 
 
 // --- helper: normalize avatar path ---
@@ -24,7 +28,11 @@ function resolveAvatarPath(p) {
   p = p.replace(/^(\.\.\/)+/, '');
   return '/' + p.replace(/^\/+/, '');
 }
+<<<<<<< HEAD
+const DEPTH_LIMIT = TREE_CONFIG.DEPTH_LIMIT;
+=======
 const DEPTH_LIMIT = 6;
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
 
 // navegación de redes (stack para volver)
 let NAV_STACK = [];
@@ -91,6 +99,10 @@ async function buildUnilevelTree(username) {
     active: isActiveThisMonth(rootData),
     puntos: Number(rootData.puntos || rootData.personalPoints || 0),
     teamPoints: Number(rootData.teamPoints || 0),
+<<<<<<< HEAD
+    celular: rootData.celular || "No registrado",
+=======
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
     children: []
   };
 
@@ -106,6 +118,10 @@ async function buildUnilevelTree(username) {
         active: isActiveThisMonth(data),
         puntos: Number(data.puntos || data.personalPoints || 0),
         teamPoints: Number(data.teamPoints || 0),
+<<<<<<< HEAD
+        celular: data.celular || "No registrado",
+=======
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
         children: []
       };
     });
@@ -196,6 +212,36 @@ function renderTree(rootNode) {
   const treeWrap = document.getElementById("treeWrap");
   clearElement(treeWrap);
   if (!rootNode) return;
+<<<<<<< HEAD
+  
+  const loadingIndicator = document.createElement('div');
+  loadingIndicator.className = 'tree-loading';
+  loadingIndicator.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;">
+      <div style="width:40px;height:40px;border:4px solid #f3f3f3;border-top:4px solid #2b9df3;border-radius:50%;animation:spin 1s linear infinite;"></div>
+      <div style="color:#666;font-size:14px;font-weight:600;">Construyendo red...</div>
+    </div>
+  `;
+  treeWrap.appendChild(loadingIndicator);
+  
+  requestAnimationFrame(() => {
+    try {
+      renderTreeCore(rootNode, treeWrap, loadingIndicator);
+    } catch (err) {
+      console.error('Error rendering tree:', err);
+      if (loadingIndicator && loadingIndicator.parentNode) {
+        loadingIndicator.remove();
+      }
+    }
+  });
+}
+
+function renderTreeCore(rootNode, treeWrap, loadingIndicator) {
+  if (loadingIndicator && loadingIndicator.parentNode) {
+    loadingIndicator.remove();
+  }
+=======
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
   // crear/actualizar breadcrumbs y botón volver
   CURRENT_ROOT = rootNode.usuario || (rootNode.data && rootNode.data.usuario) || null;
   if (typeof window._refreshNetworkBreadcrumbs === 'function') window._refreshNetworkBreadcrumbs();
@@ -307,7 +353,22 @@ function renderTree(rootNode) {
   // convertir a d3.hierarchy
   // d3 espera children en 'children'
   const root = d3g.hierarchy(rootNode, d => d.children || []);
+<<<<<<< HEAD
+  
+  // Calcular mejor espaciado dinámico basado en número de nodos
+  const nodeCount = root.descendants().length;
+  const minNodeSeparation = 80;
+  const expandedWidth = Math.max(width, nodeCount * minNodeSeparation);
+  
+  const treeLayout = d3g.tree()
+    .size([expandedWidth, height * 1.5])
+    .separation((a, b) => {
+      return a.parent === b.parent ? 1.8 : 2.2;
+    });
+  
+=======
   const treeLayout = d3g.tree().size([width, height - 40]); // espacio vertical
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
   treeLayout(root);
   // Centrar el árbol: dejar el nodo raíz arriba (top) y centrado horizontalmente
   try {
@@ -363,21 +424,54 @@ function renderTree(rootNode) {
 
   // círculo visible
   node.append("circle")
+<<<<<<< HEAD
+    .attr("class", "node-circle")
+    .attr("r", d => {
+      if (d.depth === 0) return 38;
+      return Math.max(24, 36 - d.depth * 2);
+    })
+    .attr("filter", "url(#node-drop)")
+    .attr("fill", d => (d.data.usuario === rootNode.usuario ? "#2b9df3" : d.data.active ? "#28a745" : "#bfbfbf"))
+    .attr("stroke", "#ffffff")
+    .attr("stroke-width", 3)
+    .attr("pointer-events", "none")
+    .style("transition", "all 0.3s ease");
+=======
     .attr("r", d => d.depth === 0 ? 36 : Math.max(20, 34 - d.depth*2))
       .attr("filter", "url(#node-drop)")
     .attr("fill", d => (d.data.usuario === rootNode.usuario ? "#2b9df3" : d.data.active ? "#28a745" : "#bfbfbf"))
     .attr("stroke", "#ffffff")
     .attr("stroke-width", 3)
     .attr("pointer-events", "none");
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
 
   // texto
   node.append("text")
     .attr("y", 6)
     .attr("text-anchor", "middle")
     .attr("fill", "#fff")
+<<<<<<< HEAD
+    .style("font-size", d => d.depth === 0 ? "14px" : "12px")
+    .style("font-weight", "700")
+    .style("pointer-events", "none")
+    .text(d => (d.data.usuario || "").length > 12 ? d.data.usuario.slice(0, 10) + "…" : d.data.usuario || "");
+  
+  // Indicador de hijos (si tiene children)
+  node.filter(d => d.data.children && d.data.children.length > 0)
+    .append("text")
+    .attr("class", "children-count")
+    .attr("y", d => (d.depth === 0 ? 38 : Math.max(24, 36 - d.depth * 2)) + 16)
+    .attr("text-anchor", "middle")
+    .attr("fill", "#666")
+    .style("font-size", "11px")
+    .style("font-weight", "600")
+    .style("pointer-events", "none")
+    .text(d => `${d.data.children.length}`);
+=======
     .style("font-size", "13px")
     .style("font-weight", "700")
     .text(d => (d.data.usuario || "").length > 12 ? d.data.usuario.slice(0, 10) + "…" : d.data.usuario || "");
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
 
   // animar nodos (entrada)
   node.attr('opacity',0)
@@ -390,6 +484,82 @@ function renderTree(rootNode) {
   node.each(function(d) {
     const thisNode = d3g.select(this);
     const dom = thisNode.node();
+<<<<<<< HEAD
+    
+    let lastTap = 0;
+    
+    const handle = (e) => {
+      try { e.preventDefault(); } catch (err) {}
+      try { e.stopPropagation(); } catch (err) {}
+      
+      const now = Date.now();
+      const timeSinceLastTap = now - lastTap;
+      
+      if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
+        if (d.children || d._children) {
+          toggleNode(d);
+        }
+        lastTap = 0;
+      } else {
+        showInfoCard(d.data, e);
+        lastTap = now;
+      }
+    };
+    
+    dom.addEventListener('pointerup', handle);
+    dom.addEventListener('click', handle);
+  });
+  
+  function toggleNode(d) {
+    if (d.children) {
+      d._children = d.children;
+      d.children = null;
+    } else {
+      d.children = d._children;
+      d._children = null;
+    }
+    updateTree(d);
+  }
+  
+  function updateTree(source) {
+    treeLayout(root);
+    
+    try {
+      const TOP_MARGIN = 60;
+      const shiftX = (width / 2) - root.x;
+      const shiftY = TOP_MARGIN - root.y;
+      root.each(d => { d.x = d.x + shiftX; d.y = d.y + shiftY; });
+    } catch (err) {
+      console.warn("No se pudo centrar el árbol:", err);
+    }
+    
+    const nodes = root.descendants();
+    const links = root.links();
+    
+    const nodeUpdate = g.selectAll('.node')
+      .data(nodes, d => d.data.id || d.data.usuario);
+    
+    nodeUpdate.transition()
+      .duration(400)
+      .attr('transform', d => `translate(${d.x},${d.y})`);
+    
+    const linkUpdate = g.selectAll('.link-line')
+      .data(links, d => d.target.data.id || d.target.data.usuario);
+    
+    linkUpdate.transition()
+      .duration(400)
+      .attr('d', d => {
+        const sx = d.source.x;
+        const sy = d.source.y;
+        const tx = d.target.x;
+        const ty = d.target.y;
+        return `M${sx},${sy + 30} C ${sx},${(sy + ty) / 2} ${tx},${(sy + ty) / 2} ${tx},${ty - 30}`;
+      });
+    
+    nodeUpdate.select('.children-count')
+      .text(d => d.children ? d.children.length : (d._children ? d._children.length : 0));
+  }
+=======
     const handle = (e) => {
       try { e.preventDefault(); } catch (err) {}
       try { e.stopPropagation(); } catch (err) {}
@@ -399,6 +569,7 @@ function renderTree(rootNode) {
     dom.addEventListener('pointerup', handle);
     dom.addEventListener('click', handle);
   });
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
 
   // Forzar repaint en iOS Safari: micro reflow
   try {
@@ -534,6 +705,10 @@ function createInfoCard() {
       <p id="ic-user" style="margin:0 0 8px 0;color:#666;font-size:13px;"></p>
       <p style="margin:0 0 6px 0;"><strong>Estado:</strong> <span id="ic-state"></span></p>
       <p style="margin:0 0 6px 0;"><strong>Puntos:</strong> <span id="ic-points"></span></p>
+<<<<<<< HEAD
+      <p style="margin:0 0 6px 0;"><strong>Celular:</strong> <span id="ic-phone"></span></p>
+=======
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
       <div style="margin-top:8px; text-align:right;">
         <button id="ic-view-network" class="btn" style="margin-right:8px;">Ver red</button>
         <button id="ic-close" class="btn">Cerrar</button>
@@ -575,12 +750,20 @@ function showInfoCard(node, event) {
   const userEl = el.querySelector("#ic-user");
   const stateEl = el.querySelector("#ic-state");
   const pointsEl = el.querySelector("#ic-points");
+<<<<<<< HEAD
+  const phoneEl = el.querySelector("#ic-phone");
+=======
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
   if (nameEl) nameEl.textContent = node.nombre || node.usuario || "";
   // guardar usuario en dataset para que el botón 'Ver red' pueda usarlo
   el.dataset.usuario = node.usuario || '';
   if (userEl) userEl.textContent = `Código: ${node.usuario || ""}`;
   if (stateEl) stateEl.innerHTML = node.active ? '<span style="color:#28a745">Activo</span>' : '<span style="color:#666">Inactivo</span>';
   if (pointsEl) pointsEl.textContent = `${node.puntos || 0} pts`;
+<<<<<<< HEAD
+  if (phoneEl) phoneEl.textContent = node.celular || "No registrado";
+=======
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
 
   // Posicionar cerca del punto tocado si tenemos coords
   if (event && typeof event.clientX === "number" && typeof event.clientY === "number") {
@@ -935,6 +1118,8 @@ onAuthStateChanged(auth, async (user) => {
       });
     }
 
+<<<<<<< HEAD
+=======
     const toggleDarkMode = document.getElementById("toggleDarkMode");
     if (toggleDarkMode) {
       toggleDarkMode.addEventListener("click", () => {
@@ -944,6 +1129,7 @@ onAuthStateChanged(auth, async (user) => {
       if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
     }
 
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
   } catch (err) {
     console.error("Error iniciando UI de red:", err);
   }
