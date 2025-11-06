@@ -166,7 +166,12 @@ function renderCombinedHistory() {
     const when = entry.ts.toLocaleString();
     // For withdraws, show PLUS sign and green style; for earnings show normal
     const isWithdraw = entry.type === "withdraw";
+<<<<<<< HEAD
+    const isEarning = entry.type === "earning";
+    const sign = isWithdraw ? '+' : (isEarning ? '' : '');
+=======
     const sign = isWithdraw ? '+' : (entry.type === "earning" ? '' : '');
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
     const amountHTML = `<div class="amount ${entry.type}">${sign} ${formatCurrency(entry.amount)}</div>`;
 
     // Description: try highlight name
@@ -174,7 +179,11 @@ function renderCombinedHistory() {
     const noteWithBold = highlightNameInText(rawNote, entry);
 
     const containerClass = entry.source === "historyField" ? 'entry history-field' : 'entry transactions-collection';
+<<<<<<< HEAD
+    const typeClass = entry.type === "withdraw" ? " withdraw" : (entry.type === "earning" ? " earning income" : "");
+=======
     const typeClass = entry.type === "withdraw" ? " withdraw" : (entry.type === "earning" ? " earning" : "");
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
 
     return `
       <div class="${containerClass}${typeClass}" data-id="${entry._id}">
@@ -416,10 +425,13 @@ async function cobrarPending(uid, amount = null, options = {}) {
       newGroupPoints = currentGroupPoints;
     }
 
+<<<<<<< HEAD
+=======
     // actualizar total de comisiones cobradas (nuevo campo). Si quieres otro nombre de campo, cámbialo aquí.
     const oldCharged = Number(data.totalCommissions ?? data.totalCommissions ?? 0);
     const newCharged = oldCharged + toWithdraw;
 
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
     const entry = {
       withdrawId,
       type: "withdraw",
@@ -434,8 +446,11 @@ async function cobrarPending(uid, amount = null, options = {}) {
       balance: newBalance,
       walletBalance: newWallet,
       groupPoints: newGroupPoints,
+<<<<<<< HEAD
+=======
       // guardamos el acumulado de comisiones cobradas
       totalComisionesCobradas: newCharged,
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
       history: arrayUnion(entry),
       groupPointsConsumedAt: serverTimestamp(),
     });
@@ -496,9 +511,15 @@ onAuthStateChanged(auth, async (user) => {
   attachRealtimeForUserBoth(uid);
 
   // Conectar botón cobrar (clonar para evitar múltiples listeners)
+<<<<<<< HEAD
+  if (btnCobrar && btnCobrar.parentNode) {
+    const newBtn = btnCobrar.cloneNode(true);
+    btnCobrar.parentNode.replaceChild(newBtn, btnCobrar);
+=======
   if (btnCobrar) {
     const newBtn = btnCobrar.cloneNode(true);
     if (btnCobrar.parentNode) btnCobrar.parentNode.replaceChild(newBtn, btnCobrar); else console.warn('btnCobrar.parentNode is null — skip replaceChild');
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
     newBtn.disabled = false;
     newBtn.addEventListener("click", async () => {
       newBtn.disabled = true;
