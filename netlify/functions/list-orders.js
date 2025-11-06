@@ -24,7 +24,11 @@ exports.handler = async (event) => {
     const uid = decoded.uid;
 
     const userDoc = await db.collection('usuarios').doc(uid).get();
+<<<<<<< HEAD
+    if (!userDoc.exists || userDoc.data().rol !== 'admin') {
+=======
     if (!userDoc.exists || userDoc.data().role !== 'admin') {
+>>>>>>> 5fcfed1ef02053457aec891a4203fb8830496ebe
       return { statusCode: 403, body: JSON.stringify({ error: 'No autorizado' }) };
     }
 
